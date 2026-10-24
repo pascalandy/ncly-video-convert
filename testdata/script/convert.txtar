@@ -101,15 +101,17 @@ stderr '"code":"RUNTIME"'
 ! exists locked/clip.converted.mp4
 chmod 755 locked
 
-# A folder that grants write and search but not read converts and keeps no
-# staging, though a hard link leaves the staged name until cleanup.
+# Cleanup reads the output's folder, so a folder that grants write and search
+# but not read fails both modes before encoding, and keeps no staging.
 mkdir dropbox
 cp original.mov dropbox/clip.mov
 chmod 333 dropbox
-ncly video convert dropbox/clip.mov
-stdout '"size_bytes":8'
+exits 1 ncly video convert dropbox/clip.mov --dry-run
+stderr '"code":"RUNTIME"'
+exits 1 ncly video convert dropbox/clip.mov
+stderr '"code":"RUNTIME"'
 chmod 755 dropbox
-cmp dropbox/clip.converted.mp4 expected.mp4
+! exists dropbox/clip.converted.mp4
 exec sh -c 'for p in dropbox/.ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
 
 # Missing HandBrake fails both execution and dry run with the prerequisite code.

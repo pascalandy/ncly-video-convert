@@ -53,9 +53,10 @@ func convert(ctx context.Context, call extension.Call) contract.Outcome {
 	if problem := checkDestination(call, info, output, force); problem != nil {
 		return contract.Outcome{Errors: []contract.Problem{*problem}}
 	}
-	// Staging and publication write in the output's folder, so a dry run
-	// fails there with the code that execution would answer.
-	if err := unix.Access(filepath.Dir(output), unix.W_OK|unix.X_OK); err != nil {
+	// Staging, publication and cleanup work in the output's folder, so a dry
+	// run fails there with the code that execution would answer. RemoveAll
+	// reads that folder to remove a staging folder that still holds a file.
+	if err := unix.Access(filepath.Dir(output), unix.R_OK|unix.W_OK|unix.X_OK); err != nil {
 		return conversionIOError(call, err)
 	}
 
@@ -96,17 +97,13 @@ func encode(ctx context.Context, call extension.Call, input, output string, inpu
 	if err != nil {
 		return conversionIOError(call, err)
 	}
-	staged := filepath.Join(stage, "output.mp4")
 	defer func() {
-		// RemoveAll opens the parent folder to read it when the staging
-		// folder still holds a file, so the staged file goes first: a folder
-		// that grants write and search but not read keeps no staging.
-		_ = os.Remove(staged)
 		if err := os.RemoveAll(stage); err != nil {
 			problem := conversionIOError(call, err)
 			outcome.Errors = append(outcome.Errors, problem.Errors...)
 		}
 	}()
+	staged := filepath.Join(stage, "output.mp4")
 	return wrap.Run(ctx, call, wrap.Program{
 		Name: "HandBrakeCLI", Timeout: timeout,
 		Args: []string{"--input", input, "--output", staged, "--preset", preset, "--format", "av_mp4", "--verbose=0"},

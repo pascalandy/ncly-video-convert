@@ -6,7 +6,7 @@
 
 Success means HandBrakeCLI exited zero and the published output exists as a nonempty regular file. The answer names its absolute path and size. `clip.mov` produces `clip.converted.mp4` in the input folder. The command uses `Fast 1080p30` and the MP4 container.
 
-The command validates a readable regular input, the destination and its folder's write access, and HandBrakeCLI availability in both execution and dry run. A dry run starts only HandBrake's harmless version command. It creates no staging folder or output and reports the planned paths and preset. Video decoding remains a pending check until execution.
+The command validates a readable regular input, the destination and its folder's read, write and search access, and HandBrakeCLI availability in both execution and dry run. A dry run starts only HandBrake's harmless version command. It creates no staging folder or output and reports the planned paths and preset. Video decoding remains a pending check until execution.
 
 Execution writes in a private staging folder beside the destination. Only a successful, nonempty regular output can be published. Without overwrite consent, an atomic hard link refuses a destination created during conversion. With consent, an atomic rename replaces the previous output after success. A final stat proves the published file exists. All return paths remove staging, after the SDK stops HandBrake on a timeout or signal. A failed forced conversion preserves the previous output.
 
@@ -23,7 +23,7 @@ The sole user write creates or replaces the converted MP4. No network, paid serv
 | Input missing, unreadable, or not regular; timeout invalid; destination unsafe | `USAGE_INVALID` |
 | Output exists without overwrite consent, including an arrival during conversion | `CONFIRMATION_REQUIRED` |
 | HandBrakeCLI missing | `PREREQ_MISSING` |
-| The output folder cannot be written; HandBrake exits nonzero, times out, or produces no nonempty regular output; publication or cleanup fails | `RUNTIME` |
+| The output folder cannot be read, written or searched; HandBrake exits nonzero, times out, or produces no nonempty regular output; publication or cleanup fails | `RUNTIME` |
 | Ctrl-C or SIGTERM | `INTERRUPTED` or `TERMINATED` |
 
 ## Limits
