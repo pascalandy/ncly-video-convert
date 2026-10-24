@@ -36,7 +36,7 @@ other = "{{.Output}} is not a safe, separate output file."
 
 ["video-convert.output_hint"]
 description = "Recovery hint for an unsafe or inaccessible output location."
-other = "Choose an input folder with a writable, separate .converted.mp4 destination."
+other = "Choose an input folder that you can read and write, with a separate .converted.mp4 destination."
 
 ["video-convert.exists"]
 description = "Confirmation error when an output already exists. {{.Output}} names it."

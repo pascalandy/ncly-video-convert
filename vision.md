@@ -4,7 +4,7 @@
 
 ## Wraps
 
-- HandBrakeCLI, the local executable from [HandBrake](https://handbrake.fr/), tested with the supplied 1.11.2 build
+- HandBrakeCLI, the local executable from [HandBrake](https://handbrake.fr/), tested with HandBrakeCLI 1.11.2
 - The built-in `Fast 1080p30` CPU preset, with the MP4 container selected explicitly
 
 ## Refuses
