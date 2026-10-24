@@ -5,27 +5,37 @@ name = "convert"
 
 [[commands]]
 path = "video convert"
-summary = "video-convert.inspect.summary"
-examples = ["ncly video convert notes.md", "ncly video convert notes.md --json"]
-effects = {}
-requires = { bins = ["python3"] }
+summary = "video-convert.summary"
+examples = ["ncly video convert clip.mov --dry-run", "ncly video convert clip.mov", "ncly video convert clip.mov --force --json"]
+effects = { user_writes = true }
+modes = { dry_run = true }
+requires = { bins = ["HandBrakeCLI"] }
 
 [[commands.args]]
 name = "file"
-summary = "video-convert.inspect.file"
+summary = "video-convert.file"
 required = true
+
+[[commands.flags]]
+name = "force"
+shorthand = "f"
+summary = "video-convert.force"
 
 [[commands.flags]]
 name = "timeout"
 value = "duration"
-default = "30s"
-summary = "video-convert.inspect.timeout"
+default = "2h"
+summary = "video-convert.timeout"
 
 [commands.result.schema]
 type = "object"
-required = ["size_bytes", "lines"]
-properties = { size_bytes = { type = "integer", minimum = 0 }, lines = { type = "integer", minimum = 0 } }
+required = ["input", "output", "size_bytes"]
+properties = { input = { type = "string" }, output = { type = "string" }, size_bytes = { type = "integer", minimum = 1 } }
 
-[programs.python3]
-version = "3.9"
-install = { brew = ["brew", "install", "python"], pacman = ["sudo", "pacman", "-S", "python"], apt = ["sudo", "apt", "install", "python3"], dnf = ["sudo", "dnf", "install", "python3"] }
+[commands.result.dry_run_schema]
+type = "object"
+required = ["dry_run", "input", "output", "preset", "overwrite", "pending_checks"]
+properties = { dry_run = { const = true }, input = { type = "string" }, output = { type = "string" }, preset = { type = "string" }, overwrite = { type = "boolean" }, pending_checks = { type = "array", items = { type = "string" } } }
+
+[programs.HandBrakeCLI]
+install = { brew = ["brew", "install", "handbrake"], pacman = ["sudo", "pacman", "-S", "handbrake-cli"], apt = ["sudo", "apt", "install", "handbrake-cli"], dnf = ["sudo", "dnf", "install", "HandBrake-cli"] }

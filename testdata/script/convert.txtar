@@ -1,0 +1,121 @@
+# The primary command-boundary tests cover publication, overwrite consent,
+# dry-run safety, failed processes, and false success without an output.
+chmod 755 bin/HandBrakeCLI
+env NCLY_NO_INPUT=1
+env NCLY_JSON=1
+
+# Dry run checks prerequisites but creates no output or staging directory.
+ncly video convert 'clips/one clip.mov' --dry-run
+stdout '"dry_run":true'
+stdout '"output":".*one clip.converted.mp4"'
+! exists 'clips/one clip.converted.mp4'
+! exists encoded.log
+
+# A successful process must create a nonempty output. Both transport paths work.
+ncly video convert 'clips/one clip.mov'
+stdout '"size_bytes":8'
+cmp 'clips/one clip.converted.mp4' expected.mp4
+cmp 'clips/one clip.mov' original.mov
+exits 2 ncly video convert 'clips/one clip.mov'
+stderr '"code":"CONFIRMATION_REQUIRED"'
+cmp 'clips/one clip.converted.mp4' expected.mp4
+ncly-video-convert 'clips/one clip.mov' --force
+stdout '"size_bytes":8'
+
+# Failure after writing partial data preserves the previous complete output.
+env STUB=fail
+exits 1 ncly video convert 'clips/one clip.mov' --force
+stderr '"code":"RUNTIME"'
+cmp 'clips/one clip.converted.mp4' expected.mp4
+cmp 'clips/one clip.mov' original.mov
+
+# An output arriving between preparation and publication must not be replaced.
+env STUB=race
+exits 2 ncly video convert race.mov
+stderr '"code":"CONFIRMATION_REQUIRED"'
+grep '^arrived$' race.converted.mp4
+
+# A zero exit without a regular nonempty file is not success.
+env STUB=missing
+exits 1 ncly video convert missing.mov
+stderr '"code":"RUNTIME"'
+! exists missing.converted.mp4
+env STUB=empty
+exits 1 ncly video convert empty.mov
+stderr '"code":"RUNTIME"'
+! exists empty.converted.mp4
+
+# Timeout cleans partial data and never publishes it.
+env STUB=hang
+exits 1 ncly video convert timeout.mov --timeout 100ms
+stderr '"code":"RUNTIME"'
+! exists timeout.converted.mp4
+exec sh -c 'for p in .ncly-video-convert-* clips/.ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
+
+# Invalid input, timeout and unsafe output are rejected before encoding.
+env STUB=
+exits 2 ncly video convert absent.mov
+stderr '"code":"USAGE_INVALID"'
+exits 2 ncly video convert clips
+stderr '"code":"USAGE_INVALID"'
+exits 2 ncly video convert missing.mov --timeout soon
+stderr '"code":"USAGE_INVALID"'
+symlink linked.converted.mp4 -> linked.mov
+exits 2 ncly video convert linked.mov --force
+stderr '"code":"USAGE_INVALID"'
+cmp linked.mov original.mov
+exec ln hardlinked.mov hardlinked.converted.mp4
+exits 2 ncly video convert hardlinked.mov --force
+stderr '"code":"USAGE_INVALID"'
+cmp hardlinked.mov original.mov
+mkdir directory.converted.mp4
+exits 2 ncly video convert directory.mov --force
+stderr '"code":"USAGE_INVALID"'
+
+# Missing HandBrake fails both execution and dry run with the prerequisite code.
+mv bin/HandBrakeCLI bin/hidden-HandBrakeCLI
+env PATH=$WORK/bin
+exits 78 ncly video convert missing.mov --dry-run
+stderr '"code":"PREREQ_MISSING"'
+exits 78 ncly video convert missing.mov
+stderr '"code":"PREREQ_MISSING"'
+
+-- clips/one clip.mov --
+original
+-- original.mov --
+original
+-- race.mov --
+original
+-- missing.mov --
+original
+-- empty.mov --
+original
+-- timeout.mov --
+original
+-- linked.mov --
+original
+-- directory.mov --
+original
+-- hardlinked.mov --
+original
+-- expected.mp4 --
+encoded
+-- bin/HandBrakeCLI --
+#!/bin/sh
+if [ "$1" = --version ]; then echo 'HandBrake source-build'; exit 0; fi
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --input) input=$2; shift ;;
+    --output) output=$2; shift ;;
+  esac
+  shift
+done
+echo invoked >> "$WORK/encoded.log"
+case "$STUB" in
+  fail) echo partial > "$output"; echo 'encoder failed' >&2; exit 3 ;;
+  race) echo arrived > "$WORK/race.converted.mp4" ;;
+  missing) exit 0 ;;
+  empty) : > "$output"; exit 0 ;;
+  hang) echo partial > "$output"; exec sleep 30 ;;
+esac
+echo encoded > "$output"

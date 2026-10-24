@@ -27,19 +27,9 @@ Read `extension-identity.md` in the pinned contract for the slug and command own
 
 A wrapped script goes in `worker/`. To take in a script, or to review the extension when the user asks, use the skill in `.agents/skills/nicely-extension/`.
 
-## Remove the example
-
-Keep the named extension's root. After these steps, follow "Change a command" for `ncly video convert`.
-
-1. Delete `inspect.go`, `worker/inspect.py`, and `testdata/script/inspect.txtar`
-2. Replace the example declaration at `video convert` and its examples in `manifest.toml`. Remove `[programs.python3]` when no command needs it
-3. Replace the `video-convert.inspect` catalog entries for the new command. Keep every catalog ID under `video-convert.`
-4. Remove the `ncly video convert` section and the introduction line that names the example from `spec.md`. Remove its mentions from `vision.md`, `skill/SKILL.md`, and the Recipes of `AGENTS.md`
-5. Remove its handler entry from `extension.go`. When `worker/` is empty, also remove `//go:embed worker`, its variable, and `Resources`. Then run `gofmt -w .`
-
 ## Recipes
 
-The recipes need Go, `just`, and `uv`, which runs the pinned Copier of `just update`. The scenarios of `inspect` run `/usr/bin/python3`, 3.9 or later.
+The recipes need Go, `just`, and `uv`, which runs the pinned Copier of `just update`. Scenarios use a shell stub of HandBrakeCLI. A real conversion needs HandBrakeCLI on PATH.
 
 After Copier creates the repository, run `go mod tidy` once, which writes `go.sum` for the recipes. Then commit the repository with Git, since `just update` needs a clean Git tree. Run `lefthook install` once per clone, so `just check` runs before each push.
 
