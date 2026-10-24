@@ -6,11 +6,11 @@
 
 Success means HandBrakeCLI exited zero and the published output exists as a nonempty regular file. The answer names its absolute path and size. `clip.mov` produces `clip.converted.mp4` in the input folder. The command uses `Fast 1080p30` and the MP4 container.
 
-The command validates a readable regular input, the destination, and HandBrakeCLI availability in both execution and dry run. A dry run starts only HandBrake's harmless version command. It creates no staging folder or output and reports the planned paths and preset. Video decoding remains a pending check until execution.
+The command validates a readable regular input, the destination and its folder's write access, and HandBrakeCLI availability in both execution and dry run. A dry run starts only HandBrake's harmless version command. It creates no staging folder or output and reports the planned paths and preset. Video decoding remains a pending check until execution.
 
 Execution writes in a private staging folder beside the destination. Only a successful, nonempty regular output can be published. Without overwrite consent, an atomic hard link refuses a destination created during conversion. With consent, an atomic rename replaces the previous output after success. A final stat proves the published file exists. All return paths remove staging, after the SDK stops HandBrake on a timeout or signal. A failed forced conversion preserves the previous output.
 
-The input is opened only for reading. An output that is a symlink, directory, special file, or the same file as the input is refused even with overwrite consent. The command never edits the existing output in place.
+The input is opened only for reading. Its folder is resolved through the file system, so `..` after a symlink names the file that the kernel opens, and the output goes beside that file. An output that is a symlink, directory, special file, or the same file as the input is refused even with overwrite consent. The command never edits the existing output in place.
 
 ## Effects
 
@@ -23,9 +23,9 @@ The sole user write creates or replaces the converted MP4. No network, paid serv
 | Input missing, unreadable, or not regular; timeout invalid; destination unsafe | `USAGE_INVALID` |
 | Output exists without overwrite consent, including an arrival during conversion | `CONFIRMATION_REQUIRED` |
 | HandBrakeCLI missing | `PREREQ_MISSING` |
-| HandBrake exits nonzero, times out, produces no nonempty regular output, or publication or cleanup fails | `RUNTIME` |
+| The output folder cannot be written; HandBrake exits nonzero, times out, or produces no nonempty regular output; publication or cleanup fails | `RUNTIME` |
 | Ctrl-C or SIGTERM | `INTERRUPTED` or `TERMINATED` |
 
 ## Limits
 
-HandBrake must support the built-in preset. Availability is checked without parsing its version because distribution builds can print a source revision instead of a release number. The destination filesystem must support hard links for publication without overwrite consent. Dry run does not decode the video or reserve a destination. Cleanup handles ordinary errors, timeouts, Ctrl-C, and SIGTERM; SIGKILL, power loss, and filesystem refusal can prevent any process from cleaning temporary files. Such temporary data is never published as the output. HandBrake inherits ordinary environment variables under the SDK's environment rules. HandBrake prints its progress on stdout during the whole encode; the command keeps up to 64 KB of it per minute of the timeout, and at least 1 MB, so a long encode is not refused for its progress lines.
+HandBrake must support the built-in preset. Availability is checked without parsing its version because distribution builds can print a source revision instead of a release number. The destination filesystem must support hard links for publication without overwrite consent. Dry run does not decode the video or reserve a destination. Cleanup handles ordinary errors, timeouts, Ctrl-C, and SIGTERM; SIGKILL, power loss, and filesystem refusal can prevent any process from cleaning temporary files. So can a HandBrake that ignores a stop signal for the SDK's whole cleanup time, 15 seconds, since ncly then stops the extension too. Such temporary data is never published as the output. HandBrake inherits ordinary environment variables under the SDK's environment rules. HandBrake prints its progress on stdout during the whole encode; the command keeps up to 64 KB of it per minute of the timeout, and at least 1 MB, so a long encode is not refused for its progress lines.

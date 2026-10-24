@@ -79,6 +79,28 @@ mkdir directory.converted.mp4
 exits 2 ncly video convert directory.mov --force
 stderr '"code":"USAGE_INVALID"'
 
+# The file system resolves ".." after a symlink, so alias/../clip.mov names
+# trap/actual/clip.mov, a link to trap/clip.converted.mp4. Cleaning ".." by
+# text would pick trap/clip.mov, and --force would replace that linked file.
+mkdir trap/actual/inner
+symlink trap/alias -> actual/inner
+symlink trap/actual/clip.mov -> ../clip.converted.mp4
+ncly video convert trap/alias/../clip.mov --force
+stdout '"input":".*/trap/actual/clip.mov"'
+cmp trap/clip.converted.mp4 precious.mp4
+cmp trap/actual/clip.converted.mp4 expected.mp4
+
+# A folder that execution cannot write fails the dry run with the same code.
+mkdir locked
+cp original.mov locked/clip.mov
+chmod 555 locked
+exits 1 ncly video convert locked/clip.mov --dry-run
+stderr '"code":"RUNTIME"'
+exits 1 ncly video convert locked/clip.mov --force
+stderr '"code":"RUNTIME"'
+! exists locked/clip.converted.mp4
+chmod 755 locked
+
 # Missing HandBrake fails both execution and dry run with the prerequisite code.
 mv bin/HandBrakeCLI bin/hidden-HandBrakeCLI
 env PATH=$WORK/bin
@@ -107,6 +129,12 @@ original
 original
 -- hardlinked.mov --
 original
+-- trap/clip.mov --
+decoy
+-- trap/clip.converted.mp4 --
+precious
+-- precious.mp4 --
+precious
 -- expected.mp4 --
 encoded
 -- bin/HandBrakeCLI --

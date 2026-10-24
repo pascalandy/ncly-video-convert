@@ -12,6 +12,7 @@ import (
 	"github.com/pascalandy/nicely/sdk/contract"
 	"github.com/pascalandy/nicely/sdk/extension"
 	"github.com/pascalandy/nicely/sdk/wrap"
+	"golang.org/x/sys/unix"
 )
 
 const preset = "Fast 1080p30"
@@ -32,7 +33,7 @@ func convert(ctx context.Context, call extension.Call) contract.Outcome {
 		}
 		timeout = parsed
 	}
-	input, err := filepath.Abs(call.Args[0])
+	input, err := physical(call.Args[0])
 	data := map[string]any{"File": call.Args[0], "Preset": preset}
 	if err != nil {
 		return conversionError(call, contract.UsageInvalid, "no_file", "input_hint", data)
@@ -51,6 +52,11 @@ func convert(ctx context.Context, call extension.Call) contract.Outcome {
 	data["File"], data["Output"] = input, output
 	if problem := checkDestination(call, info, output, force); problem != nil {
 		return contract.Outcome{Errors: []contract.Problem{*problem}}
+	}
+	// Staging and publication write in the output's folder, so a dry run
+	// fails there with the code that execution would answer.
+	if err := unix.Access(filepath.Dir(output), unix.W_OK|unix.X_OK); err != nil {
+		return conversionIOError(call, err)
 	}
 
 	// The same bounded, harmless call checks availability in both modes. Some
@@ -137,6 +143,26 @@ func encode(ctx context.Context, call extension.Call, input, output string, inpu
 		}
 		return contract.Outcome{Data: conversionResult{Input: input, Output: output, SizeBytes: published.Size()}}
 	})
+}
+
+// physical returns the absolute path of the file that the kernel opens for
+// name. filepath.Abs, Join and Dir clean ".." as text, which reaches another
+// file when ".." follows a symlink, so the folder of name is resolved through
+// the file system and its last element is kept as given.
+func physical(name string) (string, error) {
+	dir, file := filepath.Split(name)
+	if !filepath.IsAbs(dir) {
+		wd, err := os.Getwd()
+		if err != nil {
+			return "", err
+		}
+		dir = wd + string(filepath.Separator) + dir
+	}
+	resolved, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(resolved, file), nil
 }
 
 func checkDestination(call extension.Call, input os.FileInfo, output string, force bool) *contract.Problem {
