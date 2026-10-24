@@ -1,0 +1,14 @@
+package video
+
+import (
+	"testing"
+
+	"github.com/pascalandy/nicely/sdk/extensiontest"
+)
+
+// TestExtension runs the test kit of Nicely. The kit checks the links between
+// the manifest, the skill, the scenarios, and the Nicely versions. Then it runs
+// the scenarios of testdata/script/ against the real ncly-video-convert.
+func TestExtension(t *testing.T) {
+	extensiontest.Run(t, Extension)
+}

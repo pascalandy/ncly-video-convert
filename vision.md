@@ -1,0 +1,21 @@
+# video-convert vision
+
+This file is a form filled for the example command, `ncly video convert`.
+It inspects a file until you replace it.
+Replace the text of each part, then delete each line that starts with "Fill:".
+
+Fill: one sentence that states the job of the extension, and for whom.
+
+`ncly video convert` gives the size and the line count of a file, so an agent knows what it will read. The extension meets "What a great extension does", in the contract that `just contract` prints.
+
+## Wraps
+
+Fill: the source and the revision of each program or script that a command wraps, such as a Git URL and a commit.
+
+- `worker/inspect.py`, which the extension template wrote
+
+## Refuses
+
+Fill: what the extension will not do, and why.
+
+- It never changes a file: it only reads
