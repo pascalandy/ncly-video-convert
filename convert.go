@@ -96,13 +96,17 @@ func encode(ctx context.Context, call extension.Call, input, output string, inpu
 	if err != nil {
 		return conversionIOError(call, err)
 	}
+	staged := filepath.Join(stage, "output.mp4")
 	defer func() {
+		// RemoveAll opens the parent folder to read it when the staging
+		// folder still holds a file, so the staged file goes first: a folder
+		// that grants write and search but not read keeps no staging.
+		_ = os.Remove(staged)
 		if err := os.RemoveAll(stage); err != nil {
 			problem := conversionIOError(call, err)
 			outcome.Errors = append(outcome.Errors, problem.Errors...)
 		}
 	}()
-	staged := filepath.Join(stage, "output.mp4")
 	return wrap.Run(ctx, call, wrap.Program{
 		Name: "HandBrakeCLI", Timeout: timeout,
 		Args: []string{"--input", input, "--output", staged, "--preset", preset, "--format", "av_mp4", "--verbose=0"},
