@@ -35,6 +35,13 @@ exits 2 ncly video convert race.mov
 stderr '"code":"CONFIRMATION_REQUIRED"'
 grep '^arrived$' race.converted.mp4
 
+# HandBrake prints progress on stdout during the whole encode, so a long
+# encode writes more than the SDK's default 1 MB and must still succeed.
+env STUB=chatty
+ncly video convert chatty.mov
+stdout '"size_bytes":8'
+cmp chatty.converted.mp4 expected.mp4
+
 # A zero exit without a regular nonempty file is not success.
 env STUB=missing
 exits 1 ncly video convert missing.mov
@@ -86,6 +93,8 @@ original
 original
 -- race.mov --
 original
+-- chatty.mov --
+original
 -- missing.mov --
 original
 -- empty.mov --
@@ -114,6 +123,7 @@ echo invoked >> "$WORK/encoded.log"
 case "$STUB" in
   fail) echo partial > "$output"; echo 'encoder failed' >&2; exit 3 ;;
   race) echo arrived > "$WORK/race.converted.mp4" ;;
+  chatty) yes 'Encoding: task 1 of 1, 50.00 %' | head -c 1100000 ;;
   missing) exit 0 ;;
   empty) : > "$output"; exit 0 ;;
   hang) echo partial > "$output"; exec sleep 30 ;;
