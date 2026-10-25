@@ -1,0 +1,28 @@
+# video-convert spec
+
+`manifest.toml` holds the machine facts of each command, and `ncly describe video convert --json` shows them. This file holds only what the manifest cannot say, so it never repeats a flag or a type.
+
+This file is a form filled for the example command, `ncly video convert`.
+It inspects a file until you replace it.
+Give each command a section like that one, then delete each line that starts with "Fill:".
+
+Fill: for each command, what proves its success, why each declared effect exists, and each failure with its code.
+
+Fill: each limit that the readiness review accepted.
+
+## ncly video convert
+
+**Success means** that the answer holds `size_bytes` and `lines`, which `worker/inspect.py` counted in one read of the file.
+
+**Effects.** None: the command reads the file, and writes, bills, and calls nothing.
+
+**Failures.**
+
+| Condition | Code |
+|---|---|
+| The file is missing or is no regular file, or `--timeout` is no duration | `USAGE_INVALID` |
+| `python3` is missing or older than 3.9, or its version probe fails or does not finish in time | `PREREQ_MISSING` |
+| `python3` exits with a code other than 0, its output is missing, malformed, or over 1 MB, or the timeout expires | `RUNTIME` |
+| Ctrl-C or SIGTERM arrives | `INTERRUPTED` or `TERMINATED` |
+
+**Limits.** None.

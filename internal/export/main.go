@@ -1,0 +1,26 @@
+// Command export writes the sidecars of the extension into a folder: its
+// manifest, catalogs, and skill, as extension.Export writes them. just install
+// builds it in the same go build as ncly-video-convert, so the sidecars come
+// from that build, never from the source tree. The import name ext never
+// collides with the domain, such as fmt.
+package main
+
+import (
+	"fmt"
+	"os"
+
+	"github.com/pascalandy/nicely/sdk/extension"
+
+	ext "github.com/pascalandy/ncly-video-convert"
+)
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Fprintln(os.Stderr, "usage: export <folder>")
+		os.Exit(2)
+	}
+	if err := extension.Export(ext.Extension, os.Args[1]); err != nil {
+		fmt.Fprintln(os.Stderr, "export:", err)
+		os.Exit(1)
+	}
+}
