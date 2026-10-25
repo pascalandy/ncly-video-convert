@@ -20,12 +20,12 @@ A failed conversion keeps the previous output. Errors, timeouts, Ctrl-C, and SIG
 
 ## Install
 
-Install [Nicely](https://github.com/pascalandy/nicely#install) v0.23.0 or later, so that `ncly` is on your PATH. An older `ncly` skips this named extension. The v0.23.1 SDK is compiled into the extension and does not require a v0.23.1 host.
+Install [Nicely](https://github.com/pascalandy/nicely#install) v0.23.0 or later, so that `ncly` is on your PATH. An older `ncly` skips this named extension.
 
-Also install Go, just, and HandBrakeCLI, such as `brew install handbrake` on macOS or `sudo pacman -S handbrake-cli` on Arch Linux. Then build the extension from its release tag:
+Also install Go, just, and HandBrakeCLI, such as `brew install handbrake` on macOS or `sudo pacman -S handbrake-cli` on Arch Linux. Replace TAG with a release tag, such as `v0.1.1`, then build the extension:
 
 ```sh
-git clone --branch v0.1.1 https://github.com/pascalandy/ncly-video-convert
+git clone --branch TAG https://github.com/pascalandy/ncly-video-convert
 cd ncly-video-convert
 just install
 ncly describe video convert --json

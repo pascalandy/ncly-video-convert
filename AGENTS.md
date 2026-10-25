@@ -47,13 +47,13 @@ After Copier creates the repository, run `go mod tidy` once, which writes `go.su
 ## Release
 
 A user installs a fixed version from its tag, with the commands of `README.md`.
-A release is one Git tag `vX.Y.Z` of Semantic Versioning, such as `v0.1.1`.
+A release is one Git tag `vX.Y.Z` of Semantic Versioning, such as `v0.1.0`.
 "Release and install" in the contract's `extensions.md` holds these rules.
 
 1. Commit every change
 2. Run `just check` on the clean Git tree
 3. Make sure that "Done when" holds for this commit
 4. Push the commit to the default branch of the remote repository
-5. Tag that commit, such as with `git tag v0.1.1`
-6. Push the tag, such as with `git push origin v0.1.1`
+5. Tag that commit, such as with `git tag v0.1.0`
+6. Push the tag, such as with `git push origin v0.1.0`
 7. Run the commands of `README.md` for the new tag in a new folder. `ncly describe video convert --json` must describe `video convert`
