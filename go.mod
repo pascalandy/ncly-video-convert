@@ -5,7 +5,7 @@ go 1.27.0
 tool github.com/pascalandy/nicely/cmd/ncly
 
 require (
-	github.com/pascalandy/nicely v0.23.0
+	github.com/pascalandy/nicely v0.23.1
 	golang.org/x/sys v0.48.0
 )
 

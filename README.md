@@ -20,17 +20,22 @@ A failed conversion keeps the previous output. Errors, timeouts, Ctrl-C, and SIG
 
 ## Install
 
-Install [Nicely](https://github.com/pascalandy/nicely#install) v0.23.0 or later, so that `ncly` is on your PATH. An older `ncly` skips this extension. Also install Go, just, and HandBrakeCLI, such as `brew install handbrake` on macOS or `sudo pacman -S handbrake-cli` on Arch Linux. Then build the extension from a release tag, such as `v0.1.0`:
+Install [Nicely](https://github.com/pascalandy/nicely#install) v0.23.0 or later, so that `ncly` is on your PATH. An older `ncly` skips this named extension.
+
+Also install Go, just, and HandBrakeCLI, such as `brew install handbrake` on macOS or `sudo pacman -S handbrake-cli` on Arch Linux. Replace TAG with a release tag, such as `v0.1.1`, then build the extension:
 
 ```sh
-git clone --branch v0.1.0 https://github.com/pascalandy/ncly-video-convert
+git clone --branch TAG https://github.com/pascalandy/ncly-video-convert
 cd ncly-video-convert
 just install
 ncly describe video convert --json
+ncly skill view video-convert
 ```
 
-`just install` puts the extension into Nicely's extensions folder, in place of an earlier install.
+`git ls-remote --tags https://github.com/pascalandy/ncly-video-convert` lists the available tags. For an annotated tag, Git can warn that the tag `is not a commit!`, then note a detached HEAD. The clone holds the tagged commit.
+
+`ncly describe` confirms the install with `video convert` and the source `extension`. `just install` puts the extension into Nicely's extensions folder, in place of an earlier install, and grants no key. An agent reads `ncly skill view video-convert` to learn when to use the extension.
 
 Use `ncly video convert --help` for options. Machine callers use `--json --no-input`; successful JSON includes the verified absolute `output` path and `size_bytes`. The default timeout is two hours.
 
-The command has no batches, records, or progress display. See [spec.md](spec.md) for failures and filesystem limits, and [AGENTS.md](AGENTS.md) to change the extension.
+The command has no batches, records, or progress display. See [spec.md](spec.md) for failures and filesystem limits, and [AGENTS.md](AGENTS.md) to change or release the extension.

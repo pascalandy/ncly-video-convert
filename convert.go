@@ -106,11 +106,8 @@ func encode(ctx context.Context, call extension.Call, input, output string, inpu
 	staged := filepath.Join(stage, "output.mp4")
 	return wrap.Run(ctx, call, wrap.Program{
 		Name: "HandBrakeCLI", Timeout: timeout,
-		Args: []string{"--input", input, "--output", staged, "--preset", preset, "--format", "av_mp4", "--verbose=0"},
-		// HandBrake prints its progress on stdout during the whole encode,
-		// about 14 KB a minute. wrap answers RUNTIME past OutputLimit, so the
-		// limit grows with the timeout, with a wide margin.
-		OutputLimit: max(wrap.OutputLimit, int(timeout/time.Minute+1)*64_000),
+		Args:          []string{"--input", input, "--output", staged, "--preset", preset, "--format", "av_mp4", "--verbose=0"},
+		DiscardStdout: true,
 	}, func(end wrap.Ended) contract.Outcome {
 		if end.Exit != 0 {
 			return end.Failed()

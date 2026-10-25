@@ -27,6 +27,8 @@ Read `extension-identity.md` in the pinned contract for the slug and command own
 
 A wrapped script goes in `worker/`. To take in a script, or to review the extension when the user asks, use the skill in `.agents/skills/nicely-extension/`.
 
+`sdk/wrap` keeps 1 MB of stdout, and answers `RUNTIME` once a program writes more. A program that prints its progress on stdout, such as an encoder, can pass that limit in a long run. When the decoder reads no stdout, set `DiscardStdout: true` in `wrap.Program`. When it reads stdout, set an `OutputLimit` that the longest run cannot pass. Prove it with a scenario whose stub prints more than 1 MB on stdout, then exits 0.
+
 ## Recipes
 
 The recipes need Go, `just`, and `uv`, which runs the pinned Copier of `just update`. Scenarios use a shell stub of HandBrakeCLI. A real conversion needs HandBrakeCLI on PATH.
@@ -41,3 +43,17 @@ After Copier creates the repository, run `go mod tidy` once, which writes `go.su
 ## Done when
 
 `just check` passes, and the installed command ran once on real input. For a paid command, its dry run is enough. For a command that needs a key, relay the grant hint to the human and wait.
+
+## Release
+
+A user installs a fixed version from its tag, with the commands of `README.md`.
+A release is one Git tag `vX.Y.Z` of Semantic Versioning, such as `v0.1.0`.
+"Release and install" in the contract's `extensions.md` holds these rules.
+
+1. Commit every change
+2. Run `just check` on the clean Git tree
+3. Make sure that "Done when" holds for this commit
+4. Push the commit to the default branch of the remote repository
+5. Tag that commit, such as with `git tag v0.1.0`
+6. Push the tag, such as with `git push origin v0.1.0`
+7. Run the commands of `README.md` for the new tag in a new folder. `ncly describe video convert --json` must describe `video convert`
