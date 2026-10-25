@@ -157,9 +157,14 @@ while [ "$#" -gt 0 ]; do
   case "$1" in
     --input) input=$2; shift ;;
     --output) output=$2; shift ;;
+    --preset) preset=$2; shift ;;
+    --format) format=$2; shift ;;
   esac
   shift
 done
+if [ ! -f "$input" ] || [ "$preset" != 'Fast 1080p30' ] || [ "$format" != av_mp4 ]; then
+  echo "unexpected call: input=$input preset=$preset format=$format" >&2; exit 9
+fi
 echo invoked >> "$WORK/encoded.log"
 case "$STUB" in
   fail) echo partial > "$output"; echo 'encoder failed' >&2; exit 3 ;;
