@@ -1,0 +1,45 @@
+# Signals traverse the real ncly, extension and program runner. Wait until
+# the encoder wrote partial bytes, then interrupt, and assert filesystem state.
+chmod 755 bin/HandBrakeCLI
+env NCLY_NO_INPUT=1
+env NCLY_JSON=1
+! exec ncly video convert interrupt.mov &
+exec sh -c 'i=0; until [ -f interrupt.mov.started ]; do i=$((i+1)); [ "$i" -lt 200 ] || exit 1; sleep 0.05; done'
+kill -INT
+wait
+stderr '"code":"INTERRUPTED"'
+! exists interrupt.converted.mp4
+cmp interrupt.mov original.mov
+
+! exec sh -c 'echo $$ > host.pid; exec ncly video convert terminate.mov --force' &
+exec sh -c 'i=0; until [ -f terminate.mov.started ]; do i=$((i+1)); [ "$i" -lt 200 ] || exit 1; sleep 0.05; done'
+exec sh -c 'kill -TERM "$(cat host.pid)"'
+wait
+stderr '"code":"TERMINATED"'
+cmp terminate.converted.mp4 previous.mp4
+cmp terminate.mov original.mov
+exec sh -c 'for p in .ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
+
+-- interrupt.mov --
+original
+-- terminate.mov --
+original
+-- original.mov --
+original
+-- terminate.converted.mp4 --
+previous
+-- previous.mp4 --
+previous
+-- bin/HandBrakeCLI --
+#!/bin/sh
+if [ "$1" = --version ]; then echo 'HandBrake source-build'; exit 0; fi
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --input) input=$2; shift ;;
+    --output) output=$2; shift ;;
+  esac
+  shift
+done
+echo partial > "$output"
+echo started > "$input.started"
+exec sleep 30

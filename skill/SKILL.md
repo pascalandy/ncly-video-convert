@@ -1,13 +1,13 @@
 ---
 name: video-convert
-description: Use when an agent needs the size or the line count of a file before it reads the file or sends it on.
+description: Use when converting one local video to MP4 with HandBrakeCLI while preserving the original.
 ---
 
-# video-convert
+# Convert one video
 
-Use `ncly video convert` to learn the size and the line count of one file. It only reads the file.
+Use `ncly video convert` for one video and one MP4 output. For batches, other video jobs, or custom encoding settings, choose another tool.
 
-- Give a path in your folder: the command reads it there
-- Read `size_bytes` and `lines` from the answer of `--json`
-- Inspect each file of a folder in its own call
-- On `PREREQ_MISSING`, relay `hint` to the human, who installs Python 3.9 or later
+1. Read `ncly describe video convert --json`, then dry-run the intended call
+2. Resolve any prerequisite or destination error before execution. A dry run checks availability and paths; actual video decoding remains unchecked
+3. Run the conversion. Success returns a verified `output` and `size_bytes`. The input stays unchanged
+4. On `CONFIRMATION_REQUIRED`, review the existing output before explicitly consenting to its replacement. On failure or interruption, inspect the error before repeating the call. A failed conversion preserves an earlier output

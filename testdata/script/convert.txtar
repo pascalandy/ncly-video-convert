@@ -1,0 +1,177 @@
+# The primary command-boundary tests cover publication, overwrite consent,
+# dry-run safety, failed processes, and false success without an output.
+chmod 755 bin/HandBrakeCLI
+env NCLY_NO_INPUT=1
+env NCLY_JSON=1
+
+# Dry run checks prerequisites but creates no output or staging directory.
+ncly video convert 'clips/one clip.mov' --dry-run
+stdout '"dry_run":true'
+stdout '"output":".*one clip.converted.mp4"'
+! exists 'clips/one clip.converted.mp4'
+! exists encoded.log
+
+# A successful process must create a nonempty output. Both transport paths work.
+ncly video convert 'clips/one clip.mov'
+stdout '"size_bytes":8'
+cmp 'clips/one clip.converted.mp4' expected.mp4
+cmp 'clips/one clip.mov' original.mov
+exits 2 ncly video convert 'clips/one clip.mov'
+stderr '"code":"CONFIRMATION_REQUIRED"'
+cmp 'clips/one clip.converted.mp4' expected.mp4
+ncly-video-convert 'clips/one clip.mov' --force
+stdout '"size_bytes":8'
+
+# Failure after writing partial data preserves the previous complete output.
+env STUB=fail
+exits 1 ncly video convert 'clips/one clip.mov' --force
+stderr '"code":"RUNTIME"'
+cmp 'clips/one clip.converted.mp4' expected.mp4
+cmp 'clips/one clip.mov' original.mov
+
+# An output arriving between preparation and publication must not be replaced.
+env STUB=race
+exits 2 ncly video convert race.mov
+stderr '"code":"CONFIRMATION_REQUIRED"'
+grep '^arrived$' race.converted.mp4
+
+# HandBrake prints progress on stdout during the whole encode, so a long
+# encode writes more than the SDK's default 1 MB and must still succeed.
+env STUB=chatty
+ncly video convert chatty.mov
+stdout '"size_bytes":8'
+cmp chatty.converted.mp4 expected.mp4
+
+# A zero exit without a regular nonempty file is not success.
+env STUB=missing
+exits 1 ncly video convert missing.mov
+stderr '"code":"RUNTIME"'
+! exists missing.converted.mp4
+env STUB=empty
+exits 1 ncly video convert empty.mov
+stderr '"code":"RUNTIME"'
+! exists empty.converted.mp4
+
+# Timeout cleans partial data and never publishes it.
+env STUB=hang
+exits 1 ncly video convert timeout.mov --timeout 100ms
+stderr '"code":"RUNTIME"'
+! exists timeout.converted.mp4
+exec sh -c 'for p in .ncly-video-convert-* clips/.ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
+
+# Invalid input, timeout and unsafe output are rejected before encoding.
+env STUB=
+exits 2 ncly video convert absent.mov
+stderr '"code":"USAGE_INVALID"'
+exits 2 ncly video convert clips
+stderr '"code":"USAGE_INVALID"'
+exits 2 ncly video convert missing.mov --timeout soon
+stderr '"code":"USAGE_INVALID"'
+symlink linked.converted.mp4 -> linked.mov
+exits 2 ncly video convert linked.mov --force
+stderr '"code":"USAGE_INVALID"'
+cmp linked.mov original.mov
+exec ln hardlinked.mov hardlinked.converted.mp4
+exits 2 ncly video convert hardlinked.mov --force
+stderr '"code":"USAGE_INVALID"'
+cmp hardlinked.mov original.mov
+mkdir directory.converted.mp4
+exits 2 ncly video convert directory.mov --force
+stderr '"code":"USAGE_INVALID"'
+
+# The file system resolves ".." after a symlink, so alias/../clip.mov names
+# trap/actual/clip.mov, a link to trap/clip.converted.mp4. Cleaning ".." by
+# text would pick trap/clip.mov, and --force would replace that linked file.
+mkdir trap/actual/inner
+symlink trap/alias -> actual/inner
+symlink trap/actual/clip.mov -> ../clip.converted.mp4
+ncly video convert trap/alias/../clip.mov --force
+stdout '"input":".*/trap/actual/clip.mov"'
+cmp trap/clip.converted.mp4 precious.mp4
+cmp trap/actual/clip.converted.mp4 expected.mp4
+
+# A folder that execution cannot write fails the dry run with the same code.
+mkdir locked
+cp original.mov locked/clip.mov
+chmod 555 locked
+exits 1 ncly video convert locked/clip.mov --dry-run
+stderr '"code":"RUNTIME"'
+exits 1 ncly video convert locked/clip.mov --force
+stderr '"code":"RUNTIME"'
+! exists locked/clip.converted.mp4
+chmod 755 locked
+
+# Cleanup reads the output's folder, so a folder that grants write and search
+# but not read fails both modes before encoding, and keeps no staging.
+mkdir dropbox
+cp original.mov dropbox/clip.mov
+chmod 333 dropbox
+exits 1 ncly video convert dropbox/clip.mov --dry-run
+stderr '"code":"RUNTIME"'
+exits 1 ncly video convert dropbox/clip.mov
+stderr '"code":"RUNTIME"'
+chmod 755 dropbox
+! exists dropbox/clip.converted.mp4
+exec sh -c 'for p in dropbox/.ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
+
+# Missing HandBrake fails both execution and dry run with the prerequisite code.
+mv bin/HandBrakeCLI bin/hidden-HandBrakeCLI
+env PATH=$WORK/bin
+exits 78 ncly video convert missing.mov --dry-run
+stderr '"code":"PREREQ_MISSING"'
+exits 78 ncly video convert missing.mov
+stderr '"code":"PREREQ_MISSING"'
+
+-- clips/one clip.mov --
+original
+-- original.mov --
+original
+-- race.mov --
+original
+-- chatty.mov --
+original
+-- missing.mov --
+original
+-- empty.mov --
+original
+-- timeout.mov --
+original
+-- linked.mov --
+original
+-- directory.mov --
+original
+-- hardlinked.mov --
+original
+-- trap/clip.mov --
+decoy
+-- trap/clip.converted.mp4 --
+precious
+-- precious.mp4 --
+precious
+-- expected.mp4 --
+encoded
+-- bin/HandBrakeCLI --
+#!/bin/sh
+if [ "$1" = --version ]; then echo 'HandBrake source-build'; exit 0; fi
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --input) input=$2; shift ;;
+    --output) output=$2; shift ;;
+    --preset) preset=$2; shift ;;
+    --format) format=$2; shift ;;
+  esac
+  shift
+done
+if [ ! -f "$input" ] || [ "$preset" != 'Fast 1080p30' ] || [ "$format" != av_mp4 ]; then
+  echo "unexpected call: input=$input preset=$preset format=$format" >&2; exit 9
+fi
+echo invoked >> "$WORK/encoded.log"
+case "$STUB" in
+  fail) echo partial > "$output"; echo 'encoder failed' >&2; exit 3 ;;
+  race) echo arrived > "$WORK/race.converted.mp4" ;;
+  chatty) yes 'Encoding: task 1 of 1, 50.00 %' | head -c 1100000 ;;
+  missing) exit 0 ;;
+  empty) : > "$output"; exit 0 ;;
+  hang) echo partial > "$output"; exec sleep 30 ;;
+esac
+echo encoded > "$output"
