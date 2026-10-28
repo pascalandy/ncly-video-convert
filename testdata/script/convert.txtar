@@ -176,7 +176,6 @@ encoded
 not a video
 -- bin/HandBrakeCLI --
 #!/bin/sh
-if [ "$1" = --version ]; then echo 'HandBrake source-build'; exit 0; fi
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --input) input=$2; shift ;;

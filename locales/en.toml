@@ -71,5 +71,5 @@ description = "Human success text. {{.Output}} is the verified output path and {
 other = "Created {{.Output}} ({{.Size}})."
 
 ["video-convert.plan"]
-description = "Human dry-run text. {{.File}} and {{.Output}} are the planned paths, {{.Preset}} the fixed preset."
-other = "Would convert {{.File}} to {{.Output}} with {{.Preset}}. Video decoding remains unchecked."
+description = "Human dry-run text, after HandBrake's scan found a video title in the input. {{.File}} and {{.Output}} are the planned paths, {{.Preset}} the fixed preset."
+other = "Would convert {{.File}} to {{.Output}} with {{.Preset}}. HandBrake found a video in the input. Only the conversion decodes all of it."
