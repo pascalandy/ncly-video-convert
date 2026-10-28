@@ -60,10 +60,8 @@ func convert(ctx context.Context, call extension.Call) contract.Outcome {
 		return conversionIOError(call, err)
 	}
 
-	// In both modes, wrap.Run finds HandBrake, then one bounded scan finds a
-	// video title in the input, so a dry run answers the code that execution
-	// would. The scan carries no --preset, since HandBrake also exits 2 for an
-	// unknown preset, and exit 2 must mean only that no title was found.
+	// The scan carries no --preset, since HandBrake also exits 2 for an
+	// unknown preset, and the decoder would report that as an unreadable input.
 	ready := wrap.Run(ctx, call, wrap.Program{
 		Name: "HandBrakeCLI", Args: []string{"--input", input, "--scan"}, Timeout: min(timeout, 10*time.Second),
 		DiscardStdout: true,
