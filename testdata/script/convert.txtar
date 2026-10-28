@@ -11,6 +11,29 @@ stdout '"output":".*one clip.converted.mp4"'
 ! exists 'clips/one clip.converted.mp4'
 ! exists encoded.log
 
+# A file in which HandBrake finds no video fails both modes before any encode,
+# and its message and hint name the file, since a repeat cannot fix it.
+exits 2 ncly video convert faux.mp4 --dry-run
+stderr '"code":"VIDEO_CONVERT_UNREADABLE"'
+stderr '"message":"[^"]*faux\.mp4'
+stderr '"hint":"[^"]*faux\.mp4'
+exits 2 ncly video convert faux.mp4
+stderr '"code":"VIDEO_CONVERT_UNREADABLE"'
+stderr '"message":"[^"]*faux\.mp4'
+stderr '"hint":"[^"]*faux\.mp4'
+! exists encoded.log
+! exists faux.converted.mp4
+exec sh -c 'for p in .ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
+
+# Only exit 2 of the scan maps to VIDEO_CONVERT_UNREADABLE. Another failed
+# scan stays RUNTIME.
+env STUB=scanfail
+exits 1 ncly video convert 'clips/one clip.mov'
+stderr '"code":"RUNTIME"'
+! exists encoded.log
+! exists 'clips/one clip.converted.mp4'
+env STUB=
+
 # A successful process must create a nonempty output. Both transport paths work.
 ncly video convert 'clips/one clip.mov'
 stdout '"size_bytes":8'
@@ -23,6 +46,7 @@ ncly-video-convert 'clips/one clip.mov' --force
 stdout '"size_bytes":8'
 
 # Failure after writing partial data preserves the previous complete output.
+# An encode that exits 2 stays RUNTIME, unlike a scan that exits 2.
 env STUB=fail
 exits 1 ncly video convert 'clips/one clip.mov' --force
 stderr '"code":"RUNTIME"'
@@ -150,24 +174,34 @@ precious
 precious
 -- expected.mp4 --
 encoded
+-- faux.mp4 --
+not a video
 -- bin/HandBrakeCLI --
 #!/bin/sh
-if [ "$1" = --version ]; then echo 'HandBrake source-build'; exit 0; fi
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --input) input=$2; shift ;;
     --output) output=$2; shift ;;
     --preset) preset=$2; shift ;;
     --format) format=$2; shift ;;
+    --scan) scan=1 ;;
   esac
   shift
 done
+if [ -n "$scan" ]; then
+  if [ ! -f "$input" ] || [ -n "$preset" ]; then
+    echo "unexpected scan: input=$input preset=$preset" >&2; exit 9
+  fi
+  if [ "$STUB" = scanfail ]; then echo 'scan failed' >&2; exit 3; fi
+  if grep -qx 'not a video' "$input"; then echo 'No title found.' >&2; exit 2; fi
+  exit 0
+fi
 if [ ! -f "$input" ] || [ "$preset" != 'Fast 1080p30' ] || [ "$format" != av_mp4 ]; then
   echo "unexpected call: input=$input preset=$preset format=$format" >&2; exit 9
 fi
 echo invoked >> "$WORK/encoded.log"
 case "$STUB" in
-  fail) echo partial > "$output"; echo 'encoder failed' >&2; exit 3 ;;
+  fail) echo partial > "$output"; echo 'encoder failed' >&2; exit 2 ;;
   race) echo arrived > "$WORK/race.converted.mp4" ;;
   chatty) yes 'Encoding: task 1 of 1, 50.00 %' | head -c 1100000 ;;
   missing) exit 0 ;;

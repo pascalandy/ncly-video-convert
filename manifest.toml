@@ -37,5 +37,9 @@ type = "object"
 required = ["dry_run", "input", "output", "preset", "overwrite", "pending_checks"]
 properties = { dry_run = { const = true }, input = { type = "string" }, output = { type = "string" }, preset = { type = "string" }, overwrite = { type = "boolean" }, pending_checks = { type = "array", items = { type = "string" } } }
 
+[[errors]]
+code = "VIDEO_CONVERT_UNREADABLE"
+exit = 2
+
 [programs.HandBrakeCLI]
 install = { brew = ["brew", "install", "handbrake"], pacman = ["sudo", "pacman", "-S", "handbrake-cli"], apt = ["sudo", "apt", "install", "handbrake-cli"], dnf = ["sudo", "dnf", "install", "HandBrake-cli"] }

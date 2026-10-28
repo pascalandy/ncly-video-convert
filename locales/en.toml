@@ -22,6 +22,14 @@ other = "{{.File}} is not a readable regular input file."
 description = "Recovery hint for invalid input."
 other = "Pass the path of one readable video to ncly video convert."
 
+["video-convert.unreadable"]
+description = "Usage error when HandBrake finds no video in the input, such as a text, audio-only, empty, or truncated file. {{.File}} names the input."
+other = "{{.File}} is not a readable video. HandBrake found no video title in it."
+
+["video-convert.unreadable_hint"]
+description = "Recovery hint for an input that is not a readable video. {{.File}} names the input."
+other = "Check that {{.File}} is a complete video file, or pass another video to ncly video convert."
+
 ["video-convert.bad_timeout"]
 description = "Usage error for a nonpositive or malformed timeout."
 other = "The timeout must be a positive duration."
@@ -63,5 +71,5 @@ description = "Human success text. {{.Output}} is the verified output path and {
 other = "Created {{.Output}} ({{.Size}})."
 
 ["video-convert.plan"]
-description = "Human dry-run text. {{.File}} and {{.Output}} are the planned paths, {{.Preset}} the fixed preset."
-other = "Would convert {{.File}} to {{.Output}} with {{.Preset}}. Video decoding remains unchecked."
+description = "Human dry-run text, after HandBrake's scan found a video title in the input. {{.File}} and {{.Output}} are the planned paths, {{.Preset}} the fixed preset."
+other = "Would convert {{.File}} to {{.Output}} with {{.Preset}}. HandBrake found a video in the input. Only the conversion decodes all of it."

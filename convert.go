@@ -60,15 +60,19 @@ func convert(ctx context.Context, call extension.Call) contract.Outcome {
 		return conversionIOError(call, err)
 	}
 
-	// The same bounded, harmless call checks availability in both modes. Some
-	// distribution builds print a source revision instead of a release version.
+	// The scan carries no --preset, since HandBrake also exits 2 for an
+	// unknown preset, and the decoder would report that as an unreadable input.
 	ready := wrap.Run(ctx, call, wrap.Program{
-		Name: "HandBrakeCLI", Args: []string{"--version"}, Timeout: min(timeout, 10*time.Second),
+		Name: "HandBrakeCLI", Args: []string{"--input", input, "--scan"}, Timeout: min(timeout, 10*time.Second),
+		DiscardStdout: true,
 	}, func(end wrap.Ended) contract.Outcome {
-		if end.Exit != 0 {
-			return end.Failed()
+		switch end.Exit {
+		case 0:
+			return contract.Outcome{}
+		case 2:
+			return conversionError(call, "VIDEO_CONVERT_UNREADABLE", "unreadable", "unreadable_hint", data)
 		}
-		return contract.Outcome{}
+		return end.Failed()
 	})
 	if len(ready.Errors) != 0 || ctx.Err() != nil {
 		return ready
@@ -188,6 +192,6 @@ func conversionIOError(call extension.Call, err error) contract.Outcome {
 
 func conversionError(call extension.Call, code contract.Code, message, hint string, data map[string]any) contract.Outcome {
 	return contract.Outcome{Errors: []contract.Problem{{
-		Code: code, Message: call.Printer.T("video-convert."+message, data), Hint: call.Printer.T("video-convert."+hint, nil),
+		Code: code, Message: call.Printer.T("video-convert."+message, data), Hint: call.Printer.T("video-convert."+hint, data),
 	}}}
 }
