@@ -11,6 +11,28 @@ stdout '"output":".*one clip.converted.mp4"'
 ! exists 'clips/one clip.converted.mp4'
 ! exists encoded.log
 
+# A file in which HandBrake finds no video fails both modes before any encode,
+# and its message and hint name the file, since a repeat cannot fix it.
+exits 2 ncly video convert faux.mp4 --dry-run
+stderr '"code":"VIDEO_CONVERT_UNREADABLE"'
+stderr '"message":"[^"]*faux\.mp4'
+stderr '"hint":"[^"]*faux\.mp4'
+exits 2 ncly video convert faux.mp4
+stderr '"code":"VIDEO_CONVERT_UNREADABLE"'
+stderr '"message":"[^"]*faux\.mp4'
+stderr '"hint":"[^"]*faux\.mp4'
+! exists encoded.log
+! exists faux.converted.mp4
+exec sh -c 'for p in .ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
+
+# Only exit 2 of the scan means no video. Another failed scan stays RUNTIME.
+env STUB=scanfail
+exits 1 ncly video convert 'clips/one clip.mov'
+stderr '"code":"RUNTIME"'
+! exists encoded.log
+! exists 'clips/one clip.converted.mp4'
+env STUB=
+
 # A successful process must create a nonempty output. Both transport paths work.
 ncly video convert 'clips/one clip.mov'
 stdout '"size_bytes":8'
@@ -150,6 +172,8 @@ precious
 precious
 -- expected.mp4 --
 encoded
+-- faux.mp4 --
+not a video
 -- bin/HandBrakeCLI --
 #!/bin/sh
 if [ "$1" = --version ]; then echo 'HandBrake source-build'; exit 0; fi
@@ -159,9 +183,18 @@ while [ "$#" -gt 0 ]; do
     --output) output=$2; shift ;;
     --preset) preset=$2; shift ;;
     --format) format=$2; shift ;;
+    --scan) scan=1 ;;
   esac
   shift
 done
+if [ -n "$scan" ]; then
+  if [ ! -f "$input" ] || [ -n "$preset" ]; then
+    echo "unexpected scan: input=$input preset=$preset" >&2; exit 9
+  fi
+  if [ "$STUB" = scanfail ]; then echo 'scan failed' >&2; exit 3; fi
+  if grep -qx 'not a video' "$input"; then echo 'No title found.' >&2; exit 2; fi
+  exit 0
+fi
 if [ ! -f "$input" ] || [ "$preset" != 'Fast 1080p30' ] || [ "$format" != av_mp4 ]; then
   echo "unexpected call: input=$input preset=$preset format=$format" >&2; exit 9
 fi

@@ -22,6 +22,14 @@ other = "{{.File}} is not a readable regular input file."
 description = "Recovery hint for invalid input."
 other = "Pass the path of one readable video to ncly video convert."
 
+["video-convert.unreadable"]
+description = "Usage error when HandBrake finds no video in the input, such as a text, audio-only, empty, or truncated file. {{.File}} names the input."
+other = "{{.File}} is not a readable video. HandBrake found no video title in it."
+
+["video-convert.unreadable_hint"]
+description = "Recovery hint for an input that is not a readable video. {{.File}} names the input."
+other = "Check that {{.File}} is a complete video file, or pass another video to ncly video convert."
+
 ["video-convert.bad_timeout"]
 description = "Usage error for a nonpositive or malformed timeout."
 other = "The timeout must be a positive duration."
