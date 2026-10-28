@@ -25,7 +25,8 @@ stderr '"hint":"[^"]*faux\.mp4'
 ! exists faux.converted.mp4
 exec sh -c 'for p in .ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
 
-# Only exit 2 of the scan means no video. Another failed scan stays RUNTIME.
+# Only exit 2 of the scan maps to VIDEO_CONVERT_UNREADABLE. Another failed
+# scan stays RUNTIME.
 env STUB=scanfail
 exits 1 ncly video convert 'clips/one clip.mov'
 stderr '"code":"RUNTIME"'
@@ -45,6 +46,7 @@ ncly-video-convert 'clips/one clip.mov' --force
 stdout '"size_bytes":8'
 
 # Failure after writing partial data preserves the previous complete output.
+# An encode that exits 2 stays RUNTIME, unlike a scan that exits 2.
 env STUB=fail
 exits 1 ncly video convert 'clips/one clip.mov' --force
 stderr '"code":"RUNTIME"'
@@ -199,7 +201,7 @@ if [ ! -f "$input" ] || [ "$preset" != 'Fast 1080p30' ] || [ "$format" != av_mp4
 fi
 echo invoked >> "$WORK/encoded.log"
 case "$STUB" in
-  fail) echo partial > "$output"; echo 'encoder failed' >&2; exit 3 ;;
+  fail) echo partial > "$output"; echo 'encoder failed' >&2; exit 2 ;;
   race) echo arrived > "$WORK/race.converted.mp4" ;;
   chatty) yes 'Encoding: task 1 of 1, 50.00 %' | head -c 1100000 ;;
   missing) exit 0 ;;
