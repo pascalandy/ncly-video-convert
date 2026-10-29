@@ -34,7 +34,7 @@ ncly skill view video-convert
 
 `git ls-remote --tags https://github.com/pascalandy/ncly-video-convert` lists the available tags. For an annotated tag, Git can warn that the tag `is not a commit!`, then note a detached HEAD. The clone holds the tagged commit.
 
-`ncly describe` confirms the install with `video convert` and the source `extension`. `just install` puts the extension into Nicely's extensions folder, in place of an earlier install, and grants no key. An agent reads `ncly skill view video-convert` to learn when to use the extension.
+`ncly describe` confirms the install with `video convert` and the source `extension`. `just install` puts the extension into Nicely's extensions folder, in place of an earlier install, and grants no key. `just uninstall` in the clone removes it. An agent reads `ncly skill view video-convert` to learn when to use the extension.
 
 Use `ncly video convert --help` for options. Machine callers use `--json --no-input`; successful JSON includes the verified absolute `output` path and `size_bytes`. The default timeout is two hours.
 
