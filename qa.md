@@ -4,7 +4,8 @@ This file answers one question: what does the UAT of `ncly video convert` add to
 
 ## Prerequisites
 
-- HandBrakeCLI, tested with 1.11.2, and `ffprobe` and `ffmpeg` for the independent check
+- HandBrakeCLI, tested with 1.11.2
+- `ffprobe` and `ffmpeg`, for the independent check
 - The fixture `IMG_1642.MOV` from the [fixture registry](https://github.com/pascalandy/nicely/blob/main/docs/qa/fixtures.md)
 
 ## Prompt for the fresh agent
