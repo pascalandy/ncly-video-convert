@@ -18,7 +18,7 @@ This file answers one question: what does the UAT of `ncly video convert` add to
 |---|---|
 | Result | `ffmpeg -v error -xerror -i <output> -f null -` exits 0. For the fixture, the output is H.264 1920x1080 with AAC |
 | Fidelity | The output keeps the properties that [spec.md](spec.md#acceptance) names in `## Acceptance` |
-| Determinism | Runs on one host give the same checksum |
+| Determinism | Two runs on one host give the same frame count and duration, the same audio stream hash (`ffmpeg -v error -i <output> -map 0:a -c copy -f streamhash -hash sha256 -`), and a video SSIM of at least 0.999 (`ffmpeg -i <first> -i <second> -lavfi ssim -f null -`). The whole-file checksum must match on macOS only, since the Linux build of HandBrakeCLI can encode a slightly different video stream |
 
 ## Error cases
 
