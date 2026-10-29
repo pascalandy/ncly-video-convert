@@ -84,11 +84,18 @@ func convert(ctx context.Context, call extension.Call) contract.Outcome {
 			"overwrite": force, "pending_checks": []string{"video_decode"},
 		}}
 	}
-	timeout -= time.Since(started)
-	if timeout <= 0 {
+	rest := timeout - time.Since(started)
+	if rest <= 0 {
 		return conversionError(call, contract.Runtime, "no_output", "retry_hint", nil)
 	}
-	result := encode(ctx, call, input, output, info, force, timeout)
+	result := encode(ctx, call, input, output, info, force, rest)
+	// wrap names the timeout of the encode, which is only what the scan left
+	// of --timeout, so its message names --timeout instead.
+	stopped := map[string]any{"Name": "HandBrakeCLI", "Timeout": call.Printer.Duration(rest)}
+	if len(result.Errors) != 0 && result.Errors[0].Message == call.Printer.T("wrap.timeout", stopped) {
+		stopped["Timeout"] = call.Printer.Duration(timeout)
+		result.Errors[0].Message = call.Printer.T("wrap.timeout", stopped)
+	}
 	if value, ok := result.Data.(conversionResult); ok && len(result.Errors) == 0 && ctx.Err() == nil {
 		data["Size"] = call.Printer.Size(value.SizeBytes)
 		_, _ = fmt.Fprintln(call.Stdout, call.Printer.T("video-convert.result", data))
