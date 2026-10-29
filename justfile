@@ -51,6 +51,43 @@ install:
     done
     echo "installed $extensions/$name"
 
+# Remove the install of ncly-<slug> and its sidecars from Nicely's extensions folder, the executable first
+uninstall:
+    #!/usr/bin/env bash
+    set -Eeuo pipefail
+    die() {
+        echo "uninstall: $*" >&2
+        exit 1
+    }
+    name="ncly-{{ slug }}"
+    [[ "$name" != ncly- ]] || die "manifest.toml declares no domain"
+    [[ "${HOME:-}" == /* ]] || die "HOME must be an absolute path"
+    # An XDG variable counts only when it holds an absolute path, as Configuration in the contract says.
+    data="${XDG_DATA_HOME:-}"
+    [[ "$data" == /* ]] || data="$HOME/.local/share"
+    extensions="$data/nicely/extensions"
+    # The executable comes first: without it, Discovery skips the sidecars, but an executable
+    # without its manifest answers EXTENSION_INVALID.
+    files=""
+    for file in "$name" "$name.toml" "$name.locales" "$name.skill"; do
+        if [[ -e "$extensions/$file" || -L "$extensions/$file" ]]; then files="$files $file"; fi
+    done
+    if [[ -z "$files" ]]; then
+        echo "uninstall: nothing to remove, since $extensions holds no $name"
+        exit 0
+    fi
+    # Each file moves into a staging folder, which goes at exit, so each removal is one rename.
+    stage="$(mktemp -d "$extensions/.uninstall.XXXXXX")"
+    trap 'rm -rf "$stage"' EXIT
+    for file in $files; do
+        mv "$extensions/$file" "$stage/$file"
+        echo "removed $extensions/$file"
+    done
+
+# Run the command of ## Acceptance in spec.md as an agent would, through acceptance.sh, on a copy of the fixture or on a made input
+acceptance fixture="":
+    @bash acceptance.sh {{ if fixture == "" { "" } else { quote(join(invocation_directory(), fixture)) } }}
+
 # Move the repository to another Nicely version, such as v0.19.0: the template first, then the SDK, on a clean Git tree
 update version:
     #!/usr/bin/env bash

@@ -83,6 +83,15 @@ stderr '"code":"RUNTIME"'
 ! exists timeout.converted.mp4
 exec sh -c 'for p in .ncly-video-convert-* clips/.ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
 
+# The scan's time counts against --timeout, and the encode gets the rest, yet
+# the message names the timeout that the user gave, not that rest.
+env STUB=slowscan
+exits 1 ncly video convert slow.mov --timeout 3s
+stderr '"code":"RUNTIME"'
+stderr '"message":"HandBrakeCLI did not finish within 3 s, so it was stopped\.'
+! exists slow.converted.mp4
+exec sh -c 'for p in .ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
+
 # Invalid input, timeout and unsafe output are rejected before encoding.
 env STUB=
 exits 2 ncly video convert absent.mov
@@ -160,6 +169,8 @@ original
 original
 -- timeout.mov --
 original
+-- slow.mov --
+original
 -- linked.mov --
 original
 -- directory.mov --
@@ -193,6 +204,7 @@ if [ -n "$scan" ]; then
     echo "unexpected scan: input=$input preset=$preset" >&2; exit 9
   fi
   if [ "$STUB" = scanfail ]; then echo 'scan failed' >&2; exit 3; fi
+  if [ "$STUB" = slowscan ]; then sleep 1; fi
   if grep -qx 'not a video' "$input"; then echo 'No title found.' >&2; exit 2; fi
   exit 0
 fi
@@ -206,6 +218,6 @@ case "$STUB" in
   chatty) yes 'Encoding: task 1 of 1, 50.00 %' | head -c 1100000 ;;
   missing) exit 0 ;;
   empty) : > "$output"; exit 0 ;;
-  hang) echo partial > "$output"; exec sleep 30 ;;
+  hang|slowscan) echo partial > "$output"; exec sleep 30 ;;
 esac
 echo encoded > "$output"

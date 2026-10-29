@@ -34,16 +34,18 @@ A wrapped script goes in `worker/`. To take in a script, or to review the extens
 
 The recipes need Go, `just`, and `uv`, which runs the pinned Copier of `just update`. Scenarios use a shell stub of HandBrakeCLI. A real conversion needs HandBrakeCLI on PATH.
 
-After Copier creates the repository, run `go mod tidy` once, which writes `go.sum` for the recipes. Then commit the repository with Git, since `just update` needs a clean Git tree. Run `lefthook install` once per clone, so `just check` runs before each push.
+After Copier creates the repository, run `go mod tidy` once, which writes `go.sum` for the recipes. Then commit the repository with Git, since `just update` needs a clean Git tree. Run `lefthook install` once per clone, so `just check` runs before each push. GitHub runs it again for each push to `main` and each pull request.
 
 - `just check`: every check. It runs `go mod tidy -diff`, `gofmt`, `go vet`, and `go test`, whose test kit installs the extension into scratch folders
 - `just install`: installs the extension into Nicely's extensions folder, in place of its previous install
+- `just uninstall`: removes that install, and keeps its keys and grants
+- `just acceptance [fixture]`: runs `acceptance.sh`, which runs the command of `## Acceptance` as an agent would, in scratch folders. It works on a copy of the fixture, or on an input that it makes
 - `just update <version>`: moves the repository to another Nicely version, the template first and then the SDK, on a clean Git tree
 - `just contract`: prints the folder of the contract at the Nicely version that `go.mod` pins
 
 ## Done when
 
-`just check` passes, and the installed command ran once on the real input of `## Acceptance`. For a paid command, its dry run is enough. For a command that needs a key, relay the grant hint to the human and wait.
+`just check` passes, and `just acceptance` passes on the real input of `## Acceptance`. For a paid command, its dry run is enough. For a command that needs a key, relay the grant hint to the human and wait.
 
 ## Release
 
