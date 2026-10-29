@@ -4,7 +4,7 @@ This file answers one question: what does the UAT of `ncly video convert` add to
 
 ## Prerequisites
 
-- HandBrakeCLI, tested with 1.11.2
+- HandBrakeCLI, at the version that [vision.md](vision.md) names as tested
 - `ffprobe` and `ffmpeg`, for the independent check
 - The fixture that [spec.md](spec.md#acceptance) names in `## Acceptance`
 
@@ -36,4 +36,4 @@ This file answers one question: what does the UAT of `ncly video convert` add to
 ## Gotchas
 
 - One conversion of the fixture takes about 1 minute on the macOS test host.
-- The dry run scans up to 10 preview frames. Damage that the scan misses shows only in the run.
+- Damage that the scan of the dry run misses shows only in the run. [spec.md](spec.md#ncly-video-convert) says what the scan decodes.
