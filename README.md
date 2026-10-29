@@ -39,3 +39,11 @@ ncly skill view video-convert
 Use `ncly video convert --help` for options. Machine callers use `--json --no-input`; successful JSON includes the verified absolute `output` path and `size_bytes`. The default timeout is two hours.
 
 The command has no batches, records, or progress display. See [spec.md](spec.md) for failures and filesystem limits, and [AGENTS.md](AGENTS.md) to change or release the extension.
+
+## Let your agent find it
+
+Add one line to your agent instructions, such as `AGENTS.md` or `CLAUDE.md`, to teach an agent to use Nicely:
+
+```text
+When asked to use nicely, run ncly skill view nicely
+```

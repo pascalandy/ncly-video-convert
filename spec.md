@@ -30,3 +30,9 @@ The sole user write creates or replaces the converted MP4. No network, paid serv
 ## Limits
 
 HandBrake must support the built-in preset. Availability is checked without parsing its version because distribution builds can print a source revision instead of a release number. The destination filesystem must support hard links for publication without overwrite consent. Dry run decodes only what the scan reads, and reserves no destination. The scan passes a still image, since HandBrake reads it as a one-frame title. HandBrake also exits 2 for an unknown preset, so the scan carries no preset, and an encode that exits 2 stays `RUNTIME`. A broken HandBrake install that cannot load its built-in presets exits 2 on the scan too, so it reports `VIDEO_CONVERT_UNREADABLE` for any input; the command does not parse HandBrake's text to tell the two apart. Cleanup handles ordinary errors, timeouts, Ctrl-C, and SIGTERM; SIGKILL, power loss, and filesystem refusal can prevent any process from cleaning temporary files. So can a HandBrake that ignores a stop signal for the SDK's whole cleanup time, 15 seconds, since ncly then stops the extension too. Such temporary data is never published as the output. HandBrake inherits ordinary environment variables under the SDK's environment rules. The command discards HandBrake's stdout, where HandBrake prints encode progress, so the SDK's capture limit does not apply to it.
+
+## Acceptance
+
+Fill: the real input that proves the command, such as a fixture of the registry of Nicely, and the properties that the output keeps.
+
+Fill: each input that the wrapped program accepts but that the domain refuses.
