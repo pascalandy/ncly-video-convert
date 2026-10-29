@@ -4,6 +4,7 @@ This file answers one question: what does the UAT of `ncly video convert` add to
 
 ## Prerequisites
 
+- `just acceptance` passes on the fixture that [spec.md](spec.md#acceptance) names in `## Acceptance`, in a clone at the tested tag. It checks the Result, the Fidelity, and the Determinism below, and that a still image is still accepted ([nicely#351](https://github.com/pascalandy/nicely/issues/351))
 - HandBrakeCLI, at the version that [vision.md](vision.md) names as tested
 - `ffprobe` and `ffmpeg`, for the independent check
 - The fixture that [spec.md](spec.md#acceptance) names in `## Acceptance`. On a host without it, copy it with the [verified copy procedure](https://github.com/pascalandy/nicely/blob/main/docs/qa/fixtures.md#copy-a-fixture-to-a-host) of the fixture registry, and check it against its `SHA256SUMS`
