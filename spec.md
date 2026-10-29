@@ -33,6 +33,10 @@ HandBrake must support the built-in preset. Availability is checked without pars
 
 ## Acceptance
 
-Fill: the real input that proves the command, such as a fixture of the registry of Nicely, and the properties that the output keeps.
+The real input is the fixture `IMG_1642.MOV` of the [fixture registry](https://github.com/pascalandy/nicely/blob/main/docs/qa/fixtures.md) of Nicely. The output keeps these properties of the input:
 
-Fill: each input that the wrapped program accepts but that the domain refuses.
+- The orientation on screen
+- The duration, within 0.1 s
+- An audio track
+
+The command must refuse a still image, which HandBrakeCLI accepts. [nicely#351](https://github.com/pascalandy/nicely/issues/351) tracks that refusal.

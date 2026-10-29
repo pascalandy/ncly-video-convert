@@ -6,7 +6,7 @@ This file answers one question: what does the UAT of `ncly video convert` add to
 
 - HandBrakeCLI, tested with 1.11.2
 - `ffprobe` and `ffmpeg`, for the independent check
-- The fixture `IMG_1642.MOV` from the [fixture registry](https://github.com/pascalandy/nicely/blob/main/docs/qa/fixtures.md)
+- The fixture that [spec.md](spec.md#acceptance) names in `## Acceptance`
 
 ## Prompt for the fresh agent
 
@@ -17,7 +17,7 @@ This file answers one question: what does the UAT of `ncly video convert` add to
 | Family | Criterion |
 |---|---|
 | Result | `ffmpeg -v error -xerror -i <output> -f null -` exits 0. For the fixture, the output is H.264 1920x1080 with AAC |
-| Fidelity | The orientation on screen is unchanged. The duration matches within 0.1 s. An audio track is present |
+| Fidelity | The output keeps the properties that [spec.md](spec.md#acceptance) names in `## Acceptance` |
 | Determinism | Runs on one host give the same checksum |
 
 ## Error cases
@@ -26,7 +26,7 @@ This file answers one question: what does the UAT of `ncly video convert` add to
 |---|---|
 | Fake file, empty file, or truncated video | Exit 2 with `VIDEO_CONVERT_UNREADABLE`, and the message names the file |
 | Missing path | Exit 2 with `USAGE_INVALID` |
-| Still image | A refusal, once [nicely#351](https://github.com/pascalandy/nicely/issues/351) is fixed. Today it gives a 0.04 s video |
+| Still image | A refusal, as [spec.md](spec.md#acceptance) says in `## Acceptance`. Today it gives a 0.04 s video ([nicely#351](https://github.com/pascalandy/nicely/issues/351)) |
 
 ## Known limits
 
