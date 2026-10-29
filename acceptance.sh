@@ -108,6 +108,8 @@ mv "$output" "$work/first.mp4"
 if [[ "$(sum "$work/first.mp4")" == "$(sum "$output")" ]]; then
 	determinism="the same checksum"
 else
+	# Only the Linux build of HandBrakeCLI encodes a slightly different video stream.
+	[[ "$(uname -s)" != Darwin ]] || die "two runs on macOS give different checksums"
 	frames() {
 		ffprobe -v error -count_packets -select_streams v:0 -show_entries stream=nb_read_packets -of csv=p=0 "$1"
 	}
@@ -115,6 +117,7 @@ else
 		ffmpeg -nostdin -v error -i "$1" -map 0:a -c copy -f streamhash -hash sha256 -
 	}
 	[[ "$(frames "$work/first.mp4")" == "$(frames "$output")" ]] || die "two runs give a different frame count"
+	[[ "$(duration "$work/first.mp4")" == "$(duration "$output")" ]] || die "two runs give a different duration"
 	[[ "$(audio "$work/first.mp4")" == "$(audio "$output")" ]] || die "two runs give a different audio stream"
 	runs="$(ffmpeg -nostdin -i "$work/first.mp4" -i "$output" -lavfi "[0:v][1:v]ssim" -f null - 2>&1 | sed -n 's/.*All:\([0-9.]*\).*/\1/p')"
 	above "$runs" 0.999 || die "two runs differ: video SSIM $runs, want 0.999 or more"
