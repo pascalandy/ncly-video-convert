@@ -1,0 +1,115 @@
+# The encoder follows what HandBrakeCLI --help lists: the first GPU encoder of
+# the codec that the machine can run, else the codec's CPU encoder. The stub
+# lists the GPU encoders of $GPU, and logs the settings of each encode.
+chmod 755 bin/HandBrakeCLI
+env NCLY_NO_INPUT=1
+env NCLY_JSON=1
+
+# Without a GPU encoder, h264 keeps the preset's own x264, as before --codec.
+ncly video convert plain.mov --dry-run
+stdout '"codec":"h264"'
+stdout '"encoder":"x264"'
+! exists encoded.log
+ncly video convert plain.mov
+stdout '"encoder":"x264"'
+grep '^preset - - -$' encoded.log
+rm encoded.log
+
+# Without a GPU encoder, h265 runs x265 in 10-bit at the preset's quality.
+ncly video convert cpu265.mov --codec h265
+stdout '"codec":"h265"'
+stdout '"encoder":"x265_10bit"'
+grep '^x265_10bit 22 veryfast -$' encoded.log
+rm encoded.log
+
+# VideoToolbox comes first, with the quality that matches x264's, and decodes
+# on the GPU too.
+env GPU='vt_h264 vt_h265_10bit qsv_h264 qsv_h265_10bit'
+ncly video convert mac.mov --dry-run
+stdout '"encoder":"vt_h264"'
+ncly video convert mac.mov
+stdout '"encoder":"vt_h264"'
+grep '^vt_h264 65 - videotoolbox$' encoded.log
+ncly video convert mac265.mov --codec h265
+stdout '"encoder":"vt_h265_10bit"'
+grep '^vt_h265_10bit 55 - videotoolbox$' encoded.log
+rm encoded.log
+
+# Quick Sync serves when the machine lists it.
+env GPU='qsv_h264 qsv_h265_10bit'
+ncly video convert intel.mov
+stdout '"encoder":"qsv_h264"'
+grep '^qsv_h264 24 - -$' encoded.log
+ncly video convert intel265.mov --codec h265
+stdout '"encoder":"qsv_h265_10bit"'
+grep '^qsv_h265_10bit 24 - -$' encoded.log
+rm encoded.log
+
+# A GPU encode that fails runs the CPU encoder once, and the answer warns.
+env STUB=gpufail
+env GPU=vt_h264
+ncly video convert fallback.mov
+stdout '"encoder":"x264"'
+stdout '"code":"VIDEO_CONVERT_GPU_FAILED"'
+grep '^vt_h264 65 - videotoolbox$' encoded.log
+grep '^preset - - -$' encoded.log
+cmp fallback.converted.mp4 expected.mp4
+exec sh -c 'for p in .ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
+rm encoded.log
+
+# When the CPU encoder fails too, the run fails and publishes nothing, and
+# the warning claims no output.
+env STUB=allfail
+exits 1 ncly video convert broken.mov
+stderr '"code":"RUNTIME"'
+stderr '"code":"VIDEO_CONVERT_GPU_FAILED","message":"HandBrake''s GPU encoder vt_h264 failed, so the command ran its slower CPU encoder x264 instead\.","hint":"Check the GPU driver if conversions keep falling back to the CPU\."'
+! exists broken.converted.mp4
+env STUB=
+env GPU=
+
+# Only h264 and h265 are codecs.
+exits 2 ncly video convert plain.mov --codec av1 --force
+stderr '"code":"USAGE_INVALID"'
+
+-- plain.mov --
+original
+-- cpu265.mov --
+original
+-- mac.mov --
+original
+-- mac265.mov --
+original
+-- intel.mov --
+original
+-- intel265.mov --
+original
+-- fallback.mov --
+original
+-- broken.mov --
+original
+-- expected.mp4 --
+encoded
+-- bin/HandBrakeCLI --
+#!/bin/sh
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --help) for e in x264 x265_10bit $GPU; do echo "   $e"; done; exit 0 ;;
+    --input) input=$2; shift ;;
+    --output) output=$2; shift ;;
+    --encoder) encoder=$2; shift ;;
+    --quality) quality=$2; shift ;;
+    --encoder-preset) speed=$2; shift ;;
+    --enable-hw-decoding) decoder=$2; shift ;;
+    --scan) scan=1 ;;
+  esac
+  shift
+done
+if [ -n "$scan" ]; then
+  echo 'JSON Title Set: {"TitleList":[{"AudioList":[]}]}'
+  exit 0
+fi
+echo "${encoder:-preset} ${quality:--} ${speed:--} ${decoder:--}" >> "$WORK/encoded.log"
+case "$STUB:$encoder" in
+  gpufail:vt_* | allfail:*) echo 'encoder failed' >&2; exit 3 ;;
+esac
+echo encoded > "$output"

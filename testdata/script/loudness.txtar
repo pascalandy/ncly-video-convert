@@ -1,0 +1,125 @@
+# By default, ffmpeg normalizes the audio after the encode, in loudnorm's two
+# passes: one measures, and one applies the measures to a copy. --no-normalize,
+# an input without audio, and silent audio keep HandBrake's audio. The ffmpeg
+# stub logs each call, and writes "normalized" in the copy.
+chmod 755 bin/HandBrakeCLI
+chmod 755 bin/ffmpeg
+env NCLY_NO_INPUT=1
+env NCLY_JSON=1
+
+# The dry run plans the normalization, and checks that ffmpeg is there.
+ncly video convert talk.mov --dry-run
+stdout '"normalize":true'
+grep '^-hide_banner -version$' ffmpeg.log
+! exists talk.converted.mp4
+rm ffmpeg.log
+
+# The run measures, then applies those measures, and returns to 48 kHz.
+ncly video convert talk.mov
+stdout '"normalized":true'
+cmp talk.converted.mp4 normalized.mp4
+grep '-map 0:a:0 -af loudnorm=I=-16:LRA=12:TP=-1.5:print_format=json -f null -$' ffmpeg.log
+grep '-map 0:v -map 0:a -c copy -c:a aac -b:a 160k -ar 48000 -af loudnorm=I=-16:LRA=12:TP=-1.5:measured_I=-23.70:measured_TP=-3.88:measured_LRA=9.20:measured_thresh=-35.48:offset=1.15:linear=true:print_format=none ' ffmpeg.log
+exec sh -c 'for p in .ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
+rm ffmpeg.log
+
+# --no-normalize keeps HandBrake's audio and runs no ffmpeg.
+ncly video convert plain.mov --no-normalize
+stdout '"normalized":false'
+cmp plain.converted.mp4 expected.mp4
+! exists ffmpeg.log
+
+# An input without audio has nothing to normalize, so it needs no ffmpeg.
+ncly video convert mute.mov --dry-run
+stdout '"normalize":false'
+ncly video convert mute.mov
+stdout '"normalized":false'
+cmp mute.converted.mp4 expected.mp4
+! exists ffmpeg.log
+
+# Silent audio has no loudness: the first pass runs, the second does not.
+env STUB=silent
+ncly video convert hush.mov
+stdout '"normalized":false'
+cmp hush.converted.mp4 expected.mp4
+grep 'print_format=json' ffmpeg.log
+! grep 'linear=true' ffmpeg.log
+rm ffmpeg.log
+
+# A first pass without its measures, or a failed second pass, fails the run
+# and keeps the previous output.
+env STUB=nomeasure
+exits 1 ncly video convert talk.mov --force
+stderr '"code":"RUNTIME"'
+cmp talk.converted.mp4 normalized.mp4
+env STUB=ffmpegfail
+exits 1 ncly video convert talk.mov --force
+stderr '"code":"RUNTIME"'
+cmp talk.converted.mp4 normalized.mp4
+exec sh -c 'for p in .ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
+env STUB=
+
+# Without ffmpeg, both modes fail before any encode, unless --no-normalize.
+mkdir tools
+exec sh -c 'for t in grep; do ln -s "$(command -v $t)" tools/$t; done'
+mv bin/ffmpeg bin/hidden-ffmpeg
+env PATH=$WORK/bin:$WORK/tools
+rm encoded.log
+exits 78 ncly video convert late.mov --dry-run
+stderr '"code":"PREREQ_MISSING"'
+stderr 'ffmpeg'
+exits 78 ncly video convert late.mov
+stderr '"code":"PREREQ_MISSING"'
+! exists encoded.log
+! exists late.converted.mp4
+ncly video convert late.mov --no-normalize
+stdout '"normalized":false'
+
+-- talk.mov --
+original
+-- plain.mov --
+original
+-- mute.mov --
+no audio
+-- hush.mov --
+original
+-- late.mov --
+original
+-- expected.mp4 --
+encoded
+-- normalized.mp4 --
+normalized
+-- bin/HandBrakeCLI --
+#!/bin/sh
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --help) echo '   x264'; echo '   x265_10bit'; exit 0 ;;
+    --input) input=$2; shift ;;
+    --output) output=$2; shift ;;
+    --scan) scan=1 ;;
+  esac
+  shift
+done
+if [ -n "$scan" ]; then
+  audio='[{"Description":"AAC"}]'
+  if grep -qx 'no audio' "$input"; then audio='[]'; fi
+  echo "JSON Title Set: {\"TitleList\":[{\"AudioList\":$audio}]}"
+  exit 0
+fi
+echo invoked >> "$WORK/encoded.log"
+echo encoded > "$output"
+-- bin/ffmpeg --
+#!/bin/sh
+echo "$*" >> "$WORK/ffmpeg.log"
+case "$*" in
+  *-version*) echo 'ffmpeg version 9.0'; exit 0 ;;
+  *print_format=json*)
+    if [ "$STUB" = nomeasure ]; then exit 0; fi
+    i=-23.70 offset=1.15
+    if [ "$STUB" = silent ]; then i=-inf offset=inf; fi
+    printf '[Parsed_loudnorm_0 @ 0x1] \n{\n\t"input_i" : "%s",\n\t"input_tp" : "-3.88",\n\t"input_lra" : "9.20",\n\t"input_thresh" : "-35.48",\n\t"output_i" : "-16.10",\n\t"output_tp" : "-1.50",\n\t"output_lra" : "6.30",\n\t"output_thresh" : "-28.88",\n\t"normalization_type" : "dynamic",\n\t"target_offset" : "%s"\n}\n' "$i" "$offset" >&2
+    exit 0 ;;
+esac
+if [ "$STUB" = ffmpegfail ]; then echo 'ffmpeg failed' >&2; exit 1; fi
+for last; do :; done
+echo normalized > "$last"

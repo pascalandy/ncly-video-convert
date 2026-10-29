@@ -8,6 +8,9 @@ env NCLY_JSON=1
 ncly video convert 'clips/one clip.mov' --dry-run
 stdout '"dry_run":true'
 stdout '"output":".*one clip.converted.mp4"'
+stdout '"codec":"h264"'
+stdout '"encoder":"x264"'
+stdout '"normalize":false'
 ! exists 'clips/one clip.converted.mp4'
 ! exists encoded.log
 
@@ -26,17 +29,24 @@ stderr '"hint":"[^"]*faux\.mp4'
 exec sh -c 'for p in .ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
 
 # Only exit 2 of the scan maps to VIDEO_CONVERT_UNREADABLE. Another failed
-# scan stays RUNTIME.
+# scan stays RUNTIME, and so does a scan without a title set.
 env STUB=scanfail
 exits 1 ncly video convert 'clips/one clip.mov'
 stderr '"code":"RUNTIME"'
 ! exists encoded.log
 ! exists 'clips/one clip.converted.mp4'
+env STUB=notitles
+exits 1 ncly video convert 'clips/one clip.mov' --dry-run
+stderr '"code":"RUNTIME"'
+! exists encoded.log
 env STUB=
 
 # A successful process must create a nonempty output. Both transport paths work.
 ncly video convert 'clips/one clip.mov'
 stdout '"size_bytes":8'
+stdout '"codec":"h264"'
+stdout '"encoder":"x264"'
+stdout '"normalized":false'
 cmp 'clips/one clip.converted.mp4' expected.mp4
 cmp 'clips/one clip.mov' original.mov
 exits 2 ncly video convert 'clips/one clip.mov'
@@ -91,6 +101,13 @@ stderr '"code":"RUNTIME"'
 stderr '"message":"HandBrakeCLI did not finish within 3 s, so it was stopped\.'
 ! exists slow.converted.mp4
 exec sh -c 'for p in .ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
+
+# Preparation runs under --timeout too, so a dry run whose scan and help
+# outlast it fails as execution would, and names the given timeout.
+env STUB=slowprep
+exits 1 ncly video convert slow.mov --dry-run --timeout 1s
+stderr '"code":"RUNTIME"'
+stderr '"message":"HandBrakeCLI did not finish within 1 s, so it was stopped\.'
 
 # Invalid input, timeout and unsafe output are rejected before encoding.
 env STUB=
@@ -189,8 +206,12 @@ encoded
 not a video
 -- bin/HandBrakeCLI --
 #!/bin/sh
+# The help lists only CPU encoders, and the scan finds no audio, so these
+# scenarios run neither a GPU encoder nor ffmpeg. encoders.txtar and
+# loudness.txtar cover those.
 while [ "$#" -gt 0 ]; do
   case "$1" in
+    --help) if [ "$STUB" = slowprep ]; then sleep 0.6; fi; echo '   x264'; echo '   x265_10bit'; exit 0 ;;
     --input) input=$2; shift ;;
     --output) output=$2; shift ;;
     --preset) preset=$2; shift ;;
@@ -205,7 +226,11 @@ if [ -n "$scan" ]; then
   fi
   if [ "$STUB" = scanfail ]; then echo 'scan failed' >&2; exit 3; fi
   if [ "$STUB" = slowscan ]; then sleep 1; fi
+  if [ "$STUB" = slowprep ]; then sleep 0.6; fi
   if grep -qx 'not a video' "$input"; then echo 'No title found.' >&2; exit 2; fi
+  if [ "$STUB" = notitles ]; then echo 'Version: {}'; exit 0; fi
+  echo 'Version: {}'
+  echo 'JSON Title Set: {"TitleList":[{"AudioList":[]}]}'
   exit 0
 fi
 if [ ! -f "$input" ] || [ "$preset" != 'Fast 1080p30' ] || [ "$format" != av_mp4 ]; then

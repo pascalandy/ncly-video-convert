@@ -68,6 +68,8 @@ output="$(sed -n 's/.*"output":"\([^"]*\)".*/\1/p' "$scratch/answer")"
 want="${input##*/}"
 [[ "${output##*/}" == "${want%.*}.converted.mp4" && -f "$output" ]] || die "the answer names no output beside $input"
 grep -qE "\"size_bytes\":$(wc -c <"$output" | tr -d ' ')[,}]" "$scratch/answer" || die "size_bytes differs from wc -c of $output"
+grep -qF '"normalized":true' "$scratch/answer" || die "the answer says that the audio was not normalized"
+encoder="$(sed -n 's/.*"encoder":"\([^"]*\)".*/\1/p' "$scratch/answer")"
 
 probe() {
 	ffprobe -v error -select_streams "$1" -show_entries "$2" -of default=noprint_wrappers=1:nokey=1 "$3" | head -n 1
@@ -85,6 +87,17 @@ ssim() {
 above() {
 	awk -v a="$1" -v b="$2" 'BEGIN { exit !(a != "" && a + 0 >= b + 0) }'
 }
+# heard checks the audio target of spec.md: -16 LUFS within 0.5 LU, a true
+# peak of at most -1 dBTP, and 48 kHz, as loudnorm measures them.
+heard() {
+	local lufs peak
+	read -r lufs peak <<<"$(ffmpeg -nostdin -hide_banner -nostats -i "$1" -map 0:a:0 -af loudnorm=print_format=json -f null - 2>&1 |
+		awk -F '"' '/"input_i"/ { i = $4 } /"input_tp"/ { tp = $4 } END { print i, tp }')"
+	awk -v i="$lufs" -v tp="$peak" 'BEGIN { exit !(i != "" && i + 16 <= 0.5 && i + 16 >= -0.5 && tp != "" && tp + 0 <= -1) }' ||
+		die "the audio of $1 is at $lufs LUFS with a true peak of $peak dBTP, want -16 LUFS within 0.5 LU and at most -1 dBTP"
+	[[ "$(probe a:0 stream=sample_rate "$1")" == 48000 ]] || die "the audio of $1 is not at 48 kHz"
+	echo "$lufs LUFS and $peak dBTP"
+}
 
 ffmpeg -nostdin -v error -xerror -i "$output" -f null - || die "ffmpeg cannot decode $output"
 [[ "$(probe v:0 stream=codec_name "$output")" == h264 ]] || die "the video of $output is not H.264"
@@ -101,15 +114,19 @@ awk -v a="$in_duration" -v b="$out_duration" 'BEGIN { d = a - b; exit !(d <= 0.1
 	die "the duration of $output, $out_duration s, is not within 0.1 s of $in_duration s"
 orientation="$(ssim "$input" "$output")"
 above "$orientation" 0.8 || die "$output does not show the input the same way up: SSIM $orientation, want 0.8 or more"
+audio="$(heard "$output")"
 
 # A second run checks determinism, as the Determinism criterion of qa.md says.
 mv "$output" "$work/first.mp4"
 (cd "$work" && ncly "${command[@]}" "$input" --json --no-input) >/dev/null 2>"$scratch/stderr" || die "the second run failed: $(cat "$scratch/stderr")"
+# A GPU encoder never gives the same file twice, and the Linux build of
+# HandBrakeCLI can encode a slightly different video stream.
+least=0.999
+case "$encoder" in vt_* | qsv_*) least=0.99 ;; esac
 if [[ "$(sum "$work/first.mp4")" == "$(sum "$output")" ]]; then
 	determinism="the same checksum"
 else
-	# Only the Linux build of HandBrakeCLI encodes a slightly different video stream.
-	[[ "$(uname -s)" != Darwin ]] || die "two runs on macOS give different checksums"
+	[[ "$least" == 0.99 || "$(uname -s)" != Darwin ]] || die "two runs of $encoder on macOS give different checksums"
 	frames() {
 		ffprobe -v error -count_packets -select_streams v:0 -show_entries stream=nb_read_packets -of csv=p=0 "$1"
 	}
@@ -120,9 +137,21 @@ else
 	[[ "$(duration "$work/first.mp4")" == "$(duration "$output")" ]] || die "two runs give a different duration"
 	[[ "$(audio "$work/first.mp4")" == "$(audio "$output")" ]] || die "two runs give a different audio stream"
 	runs="$(ffmpeg -nostdin -i "$work/first.mp4" -i "$output" -lavfi "[0:v][1:v]ssim" -f null - 2>&1 | sed -n 's/.*All:\([0-9.]*\).*/\1/p')"
-	above "$runs" 0.999 || die "two runs differ: video SSIM $runs, want 0.999 or more"
+	above "$runs" "$least" || die "two runs differ: video SSIM $runs, want $least or more"
 	determinism="the same frames and audio, and a video SSIM of $runs"
 fi
+
+# --codec h265 gives H.265 Main 10, with the hvc1 tag that Apple's players need.
+(cd "$work" && ncly "${command[@]}" "$input" --codec h265 --force --json --no-input) >"$scratch/answer" 2>"$scratch/stderr" ||
+	die "the h265 run failed: $(cat "$scratch/stderr")"
+grep -qF '"codec":"h265"' "$scratch/answer" || die "the h265 answer names another codec"
+encoder265="$(sed -n 's/.*"encoder":"\([^"]*\)".*/\1/p' "$scratch/answer")"
+h265="$(probe v:0 stream=codec_name "$output") $(probe v:0 stream=profile "$output") $(probe v:0 stream=codec_tag_string "$output")"
+[[ "$h265" == "hevc Main 10 hvc1" ]] || die "the h265 output is $h265, want hevc Main 10 hvc1"
+h265_duration="$(duration "$output")"
+awk -v a="$in_duration" -v b="$h265_duration" 'BEGIN { d = a - b; exit !(d <= 0.1 && d >= -0.1) }' ||
+	die "the duration of the h265 output, $h265_duration s, is not within 0.1 s of $in_duration s"
+audio265="$(heard "$output")"
 
 # The domain refuses a still image, which HandBrakeCLI accepts. Until
 # nicely#351 lands, the command accepts it too, and this check expects that.
@@ -134,4 +163,4 @@ if [[ "$code" == 2 ]] && grep -qF '"code":"VIDEO_CONVERT_UNREADABLE"' "$scratch/
 fi
 [[ "$code" == 0 ]] || die "$work/still.png: want exit 0 until nicely#351 lands, got exit $code: $(cat "$scratch/refusal")"
 
-echo "acceptance: ncly ${command[*]} passed on $input: H.264 and AAC, $got, $out_duration s, orientation SSIM $orientation; two runs give $determinism; a still image is still accepted (nicely#351)"
+echo "acceptance: ncly ${command[*]} passed on $input: H.264 with $encoder and AAC at $audio, $got, $out_duration s, orientation SSIM $orientation; two runs give $determinism; --codec h265 gives $h265 with $encoder265, $h265_duration s, AAC at $audio265; a still image is still accepted (nicely#351)"

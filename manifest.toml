@@ -6,10 +6,10 @@ name = "convert"
 [[commands]]
 path = "video convert"
 summary = "video-convert.summary"
-examples = ["ncly video convert clip.mov --dry-run", "ncly video convert clip.mov", "ncly video convert clip.mov --force --json"]
+examples = ["ncly video convert clip.mov --dry-run", "ncly video convert clip.mov", "ncly video convert clip.mov --codec h265", "ncly video convert clip.mov --force --json"]
 effects = { user_writes = true }
 modes = { dry_run = true }
-requires = { bins = ["HandBrakeCLI"] }
+requires = { bins = ["HandBrakeCLI", "ffmpeg"] }
 
 [[commands.args]]
 name = "file"
@@ -22,6 +22,17 @@ shorthand = "f"
 summary = "video-convert.force"
 
 [[commands.flags]]
+name = "codec"
+value = "codec"
+values = ["h264", "h265"]
+default = "h264"
+summary = "video-convert.codec"
+
+[[commands.flags]]
+name = "no-normalize"
+summary = "video-convert.no_normalize"
+
+[[commands.flags]]
 name = "timeout"
 value = "duration"
 default = "2h"
@@ -29,13 +40,13 @@ summary = "video-convert.timeout"
 
 [commands.result.schema]
 type = "object"
-required = ["input", "output", "size_bytes"]
-properties = { input = { type = "string" }, output = { type = "string" }, size_bytes = { type = "integer", minimum = 1 } }
+required = ["input", "output", "size_bytes", "codec", "encoder", "normalized"]
+properties = { input = { type = "string" }, output = { type = "string" }, size_bytes = { type = "integer", minimum = 1 }, codec = { enum = ["h264", "h265"] }, encoder = { type = "string" }, normalized = { type = "boolean" } }
 
 [commands.result.dry_run_schema]
 type = "object"
-required = ["dry_run", "input", "output", "preset", "overwrite", "pending_checks"]
-properties = { dry_run = { const = true }, input = { type = "string" }, output = { type = "string" }, preset = { type = "string" }, overwrite = { type = "boolean" }, pending_checks = { type = "array", items = { type = "string" } } }
+required = ["dry_run", "input", "output", "preset", "codec", "encoder", "normalize", "overwrite", "pending_checks"]
+properties = { dry_run = { const = true }, input = { type = "string" }, output = { type = "string" }, preset = { type = "string" }, codec = { enum = ["h264", "h265"] }, encoder = { type = "string" }, normalize = { type = "boolean" }, overwrite = { type = "boolean" }, pending_checks = { type = "array", items = { type = "string" } } }
 
 [[errors]]
 code = "VIDEO_CONVERT_UNREADABLE"
@@ -43,3 +54,7 @@ exit = 2
 
 [programs.HandBrakeCLI]
 install = { brew = ["brew", "install", "handbrake"], pacman = ["sudo", "pacman", "-S", "handbrake-cli"], apt = ["sudo", "apt", "install", "handbrake-cli"], dnf = ["sudo", "dnf", "install", "HandBrake-cli"] }
+
+[programs.ffmpeg]
+conditional = true
+install = { brew = ["brew", "install", "ffmpeg"], pacman = ["sudo", "pacman", "-S", "ffmpeg"], apt = ["sudo", "apt", "install", "ffmpeg"], dnf = ["sudo", "dnf", "install", "ffmpeg-free"] }

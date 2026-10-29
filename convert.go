@@ -1,10 +1,17 @@
 package video
 
 import (
+	"bytes"
+	"cmp"
 	"context"
+	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
+	"runtime"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,10 +24,58 @@ import (
 
 const preset = "Fast 1080p30"
 
+// An encoder is one video encoder of HandBrake and the arguments that follow
+// the preset. Each encoder but the preset's own x264 takes its own quality,
+// since the preset's RF 22 means another quality on another encoder's scale.
+// Each GPU quality gave at least the VMAF of x264 on IMG_1642.MOV.
+type encoder struct {
+	Name string
+	Args []string
+}
+
+// codecs holds the encoders of each --codec value in order of preference:
+// the GPU ones, then the CPU one, which every HandBrakeCLI build has.
+// HandBrakeCLI --help lists only the encoders that the machine can run.
+var codecs = map[string][]encoder{
+	"h264": {
+		{"vt_h264", []string{"--encoder", "vt_h264", "--quality", "65", "--enable-hw-decoding", "videotoolbox"}},
+		{"qsv_h264", []string{"--encoder", "qsv_h264", "--quality", "24"}},
+		{"x264", nil},
+	},
+	"h265": {
+		{"vt_h265_10bit", []string{"--encoder", "vt_h265_10bit", "--quality", "55", "--enable-hw-decoding", "videotoolbox"}},
+		{"qsv_h265_10bit", []string{"--encoder", "qsv_h265_10bit", "--quality", "24"}},
+		{"x265_10bit", []string{"--encoder", "x265_10bit", "--quality", "22", "--encoder-preset", "veryfast"}},
+	},
+}
+
+// loudness is the loudnorm target of the earlier video tools of the author:
+// -16 LUFS and a range of 12 LU. The true peak aims at -1.5 dBTP, since the
+// AAC encode after loudnorm raised a peak of -1 dBTP to -0.77 dBTP.
+const loudness = "loudnorm=I=-16:LRA=12:TP=-1.5"
+
 type conversionResult struct {
-	Input     string `json:"input"`
-	Output    string `json:"output"`
-	SizeBytes int64  `json:"size_bytes"`
+	Input      string `json:"input"`
+	Output     string `json:"output"`
+	SizeBytes  int64  `json:"size_bytes"`
+	Codec      string `json:"codec"`
+	Encoder    string `json:"encoder"`
+	Normalized bool   `json:"normalized"`
+}
+
+// A job is one conversion, as preparation planned it.
+type job struct {
+	call      extension.Call
+	input     string
+	output    string
+	inputInfo os.FileInfo
+	force     bool
+	codec     string
+	encoder   encoder
+	normalize bool
+	timeout   time.Duration
+	deadline  time.Time
+	warnings  []contract.Problem
 }
 
 func convert(ctx context.Context, call extension.Call) contract.Outcome {
@@ -33,8 +88,9 @@ func convert(ctx context.Context, call extension.Call) contract.Outcome {
 		}
 		timeout = parsed
 	}
+	codec := cmp.Or(call.Flags["codec"], "h264")
 	input, err := physical(call.Args[0])
-	data := map[string]any{"File": call.Args[0], "Preset": preset}
+	data := map[string]any{"File": call.Args[0], "Preset": preset, "Codec": codec}
 	if err != nil {
 		return conversionError(call, contract.UsageInvalid, "no_file", "input_hint", data)
 	}
@@ -60,97 +116,350 @@ func convert(ctx context.Context, call extension.Call) contract.Outcome {
 		return conversionIOError(call, err)
 	}
 
-	// The scan carries no --preset, since HandBrake also exits 2 for an
-	// unknown preset, and the decoder would report that as an unreadable input.
-	ready := wrap.Run(ctx, call, wrap.Program{
-		Name: "HandBrakeCLI", Args: []string{"--input", input, "--scan"}, Timeout: min(timeout, 10*time.Second),
-		DiscardStdout: true,
-	}, func(end wrap.Ended) contract.Outcome {
+	j := job{
+		call: call, input: input, output: output, inputInfo: info, force: force,
+		codec: codec, timeout: timeout, deadline: started.Add(timeout),
+	}
+	audio, ready := j.scan(ctx, data)
+	if len(ready.Errors) != 0 || ctx.Err() != nil {
+		return ready
+	}
+	j.normalize = audio && call.Flags["no-normalize"] != "true"
+	if ready = j.prepare(ctx); len(ready.Errors) != 0 || ctx.Err() != nil {
+		ready.Warnings = j.warnings
+		return ready
+	}
+	data["Encoder"], data["Normalize"] = j.encoder.Name, j.normalize
+	if call.Flags["dry-run"] == "true" {
+		_, _ = fmt.Fprintln(call.Stdout, call.Printer.T("video-convert.plan", data))
+		return contract.Outcome{Warnings: j.warnings, Data: map[string]any{
+			"dry_run": true, "input": input, "output": output, "preset": preset, "codec": codec,
+			"encoder": j.encoder.Name, "normalize": j.normalize, "overwrite": force,
+			"pending_checks": []string{"video_decode"},
+		}}
+	}
+	result := j.encode(ctx)
+	result.Warnings = j.warnings
+	if value, ok := result.Data.(conversionResult); ok && len(result.Errors) == 0 && ctx.Err() == nil {
+		data["Size"], data["Encoder"], data["Normalize"] = call.Printer.Size(value.SizeBytes), value.Encoder, value.Normalized
+		_, _ = fmt.Fprintln(call.Stdout, call.Printer.T("video-convert.result", data))
+	}
+	return result
+}
+
+// prepared bounds each program of preparation, which ends in moments.
+const prepared = 10 * time.Second
+
+// scan asks HandBrake for the titles of the input, and reports whether the
+// first one has audio. The scan carries no --preset, since HandBrake also
+// exits 2 for an unknown preset, and the decoder would report that as an
+// unreadable input.
+func (j *job) scan(ctx context.Context, data map[string]any) (bool, contract.Outcome) {
+	var audio bool
+	call := j.call
+	outcome := j.step(ctx, wrap.Program{Name: "HandBrakeCLI", Args: []string{"--input", j.input, "--scan", "--json"}}, prepared, func(end wrap.Ended) contract.Outcome {
 		switch end.Exit {
 		case 0:
+			var ok bool
+			if audio, ok = hasAudio(end.Stdout); !ok {
+				return end.Malformed()
+			}
 			return contract.Outcome{}
 		case 2:
 			return conversionError(call, "VIDEO_CONVERT_UNREADABLE", "unreadable", "unreadable_hint", data)
 		}
 		return end.Failed()
 	})
-	if len(ready.Errors) != 0 || ctx.Err() != nil {
-		return ready
-	}
-	if call.Flags["dry-run"] == "true" {
-		_, _ = fmt.Fprintln(call.Stdout, call.Printer.T("video-convert.plan", data))
-		return contract.Outcome{Data: map[string]any{
-			"dry_run": true, "input": input, "output": output, "preset": preset,
-			"overwrite": force, "pending_checks": []string{"video_decode"},
-		}}
-	}
-	rest := timeout - time.Since(started)
-	if rest <= 0 {
-		return conversionError(call, contract.Runtime, "no_output", "retry_hint", nil)
-	}
-	result := encode(ctx, call, input, output, info, force, rest)
-	// wrap names the timeout of the encode, which is only what the scan left
-	// of --timeout, so its message names --timeout instead.
-	stopped := map[string]any{"Name": "HandBrakeCLI", "Timeout": call.Printer.Duration(rest)}
-	if len(result.Errors) != 0 && result.Errors[0].Message == call.Printer.T("wrap.timeout", stopped) {
-		stopped["Timeout"] = call.Printer.Duration(timeout)
-		result.Errors[0].Message = call.Printer.T("wrap.timeout", stopped)
-	}
-	if value, ok := result.Data.(conversionResult); ok && len(result.Errors) == 0 && ctx.Err() == nil {
-		data["Size"] = call.Printer.Size(value.SizeBytes)
-		_, _ = fmt.Fprintln(call.Stdout, call.Printer.T("video-convert.result", data))
-	}
-	return result
+	return audio, outcome
 }
 
-func encode(ctx context.Context, call extension.Call, input, output string, inputInfo os.FileInfo, force bool, timeout time.Duration) (outcome contract.Outcome) {
-	stage, err := os.MkdirTemp(filepath.Dir(output), ".ncly-video-convert-")
-	if err != nil {
-		return conversionIOError(call, err)
+// hasAudio reads the title set that HandBrake prints after "JSON Title Set: "
+// on stdout, and reports whether its first title has an audio track. Its
+// second result is false when stdout holds no such title set.
+func hasAudio(stdout []byte) (bool, bool) {
+	_, set, found := bytes.Cut(stdout, []byte("JSON Title Set: "))
+	if !found {
+		return false, false
 	}
-	defer func() {
-		if err := os.RemoveAll(stage); err != nil {
-			problem := conversionIOError(call, err)
-			outcome.Errors = append(outcome.Errors, problem.Errors...)
+	var titles struct {
+		TitleList []struct {
+			AudioList []json.RawMessage
 		}
-	}()
-	staged := filepath.Join(stage, "output.mp4")
-	return wrap.Run(ctx, call, wrap.Program{
-		Name: "HandBrakeCLI", Timeout: timeout,
-		Args:          []string{"--input", input, "--output", staged, "--preset", preset, "--format", "av_mp4", "--verbose=0"},
-		DiscardStdout: true,
-	}, func(end wrap.Ended) contract.Outcome {
+	}
+	if err := json.NewDecoder(bytes.NewReader(set)).Decode(&titles); err != nil || len(titles.TitleList) == 0 {
+		return false, false
+	}
+	return len(titles.TitleList[0].AudioList) != 0, true
+}
+
+// prepare picks the encoder, then checks ffmpeg when the job normalizes.
+// ffmpeg runs only after the encode, so a missing ffmpeg must fail here,
+// where a dry run answers the code that execution would.
+func (j *job) prepare(ctx context.Context) contract.Outcome {
+	if ready := j.chooseEncoder(ctx); len(ready.Errors) != 0 || ctx.Err() != nil || !j.normalize {
+		return ready
+	}
+	return j.step(ctx, wrap.Program{Name: "ffmpeg", Args: []string{"-hide_banner", "-version"}, DiscardStdout: true}, prepared, func(end wrap.Ended) contract.Outcome {
 		if end.Exit != 0 {
 			return end.Failed()
 		}
-		info, err := os.Lstat(staged)
-		if err != nil || !info.Mode().IsRegular() || info.Size() <= 0 {
-			return conversionError(call, contract.Runtime, "no_output", "retry_hint", nil)
+		return contract.Outcome{}
+	})
+}
+
+// chooseEncoder picks the first encoder of the codec that HandBrakeCLI
+// --help lists. On Linux with an Intel GPU, it warns when Quick Sync lacks
+// Intel's media runtime.
+func (j *job) chooseEncoder(ctx context.Context) contract.Outcome {
+	encoders := codecs[j.codec]
+	cpu := encoders[len(encoders)-1]
+	return j.step(ctx, wrap.Program{Name: "HandBrakeCLI", Args: []string{"--help"}}, prepared, func(end wrap.Ended) contract.Outcome {
+		if end.Exit != 0 {
+			return end.Failed()
 		}
-		if ctx.Err() != nil {
-			return contract.Outcome{}
+		help := string(end.Stdout)
+		listed := strings.Fields(help)
+		j.encoder = cpu
+		for _, e := range encoders[:len(encoders)-1] {
+			if slices.Contains(listed, e.Name) {
+				j.encoder = e
+				break
+			}
 		}
-		if problem := checkDestination(call, inputInfo, output, force); problem != nil {
-			return contract.Outcome{Errors: []contract.Problem{*problem}}
+		if runtime.GOOS == "linux" && quickSyncMissing(help) && intelGPU("/sys") {
+			j.warn("GPU_RUNTIME_MISSING", "gpu_runtime_missing", "gpu_runtime_hint", nil)
 		}
-		if force {
-			err = os.Rename(staged, output)
-		} else {
-			// Link creates a complete output atomically and refuses an existing
-			// destination even if another process creates it after the check.
-			err = os.Link(staged, output)
+		return contract.Outcome{}
+	})
+}
+
+// quickSyncMissing reports whether the help of a HandBrake build with Quick
+// Sync, which offers 'qsv' decoding, lists no qsv encoder, as when Intel's
+// media runtime is missing. A GPU that encodes only some codecs still lists
+// their qsv encoders.
+func quickSyncMissing(help string) bool {
+	return strings.Contains(help, "'qsv'") && !slices.ContainsFunc(strings.Fields(help), func(word string) bool {
+		return strings.HasPrefix(word, "qsv_")
+	})
+}
+
+// intelGPU reports whether a DRM device under sys, such as /sys, comes from
+// Intel, whose PCI vendor ID is 0x8086.
+func intelGPU(sys string) bool {
+	vendors, _ := filepath.Glob(filepath.Join(sys, "class", "drm", "*", "device", "vendor"))
+	for _, vendor := range vendors {
+		id, err := os.ReadFile(vendor)
+		if err == nil && strings.TrimSpace(string(id)) == "0x8086" {
+			return true
 		}
-		if os.IsExist(err) {
-			return conversionError(call, contract.ConfirmationRequired, "exists", "force_hint", map[string]any{"Output": output})
+	}
+	return false
+}
+
+func (j *job) encode(ctx context.Context) (outcome contract.Outcome) {
+	stage, err := os.MkdirTemp(filepath.Dir(j.output), ".ncly-video-convert-")
+	if err != nil {
+		return conversionIOError(j.call, err)
+	}
+	defer func() {
+		if err := os.RemoveAll(stage); err != nil {
+			problem := conversionIOError(j.call, err)
+			outcome.Errors = append(outcome.Errors, problem.Errors...)
 		}
+	}()
+	encoded := filepath.Join(stage, "encoded.mp4")
+	outcome = j.transcode(ctx, encoded)
+	if len(outcome.Errors) != 0 || ctx.Err() != nil {
+		return outcome
+	}
+	final, normalized := encoded, false
+	if j.normalize {
+		normalizedFile := filepath.Join(stage, "normalized.mp4")
+		if normalized, outcome = j.normalizeAudio(ctx, encoded, normalizedFile); len(outcome.Errors) != 0 || ctx.Err() != nil {
+			return outcome
+		}
+		if normalized {
+			final = normalizedFile
+		}
+	}
+	return j.publish(final, normalized)
+}
+
+// transcode runs HandBrake with the planned encoder. When a GPU encoder exits
+// with an error, it runs the CPU encoder of the codec once, with a warning,
+// since HandBrake never falls back by itself.
+func (j *job) transcode(ctx context.Context, staged string) contract.Outcome {
+	encoders := codecs[j.codec]
+	cpu := encoders[len(encoders)-1]
+	outcome, exited := j.handBrake(ctx, staged)
+	if exited && j.encoder.Name != cpu.Name && ctx.Err() == nil {
+		j.warn("GPU_FAILED", "gpu_failed", "gpu_failed_hint", map[string]any{"Encoder": j.encoder.Name, "CPU": cpu.Name})
+		j.encoder = cpu
+		outcome, _ = j.handBrake(ctx, staged)
+	}
+	return outcome
+}
+
+// handBrake runs one encode into staged. Its second result is true when
+// HandBrake exited with an error, as opposed to a timeout or a signal.
+func (j *job) handBrake(ctx context.Context, staged string) (contract.Outcome, bool) {
+	var exited bool
+	args := append([]string{"--input", j.input, "--output", staged, "--preset", preset, "--format", "av_mp4", "--verbose=0"}, j.encoder.Args...)
+	outcome := j.step(ctx, wrap.Program{Name: "HandBrakeCLI", Args: args, DiscardStdout: true}, 0, func(end wrap.Ended) contract.Outcome {
+		if end.Exit != 0 {
+			exited = true
+			return end.Failed()
+		}
+		if info, err := os.Lstat(staged); err != nil || !info.Mode().IsRegular() || info.Size() <= 0 {
+			return conversionError(j.call, contract.Runtime, "no_output", "retry_hint", nil)
+		}
+		return contract.Outcome{}
+	})
+	return outcome, exited
+}
+
+// normalizeAudio measures the loudness of the encoded audio with loudnorm,
+// then writes a copy of encoded whose audio meets the target, as in
+// loudnorm's two-pass mode. loudnorm works at 192 kHz, so the copy returns to
+// 48 kHz. Silent audio has no loudness to correct, so it reports false and
+// writes nothing.
+func (j *job) normalizeAudio(ctx context.Context, encoded, normalized string) (bool, contract.Outcome) {
+	var measure string
+	outcome := j.step(ctx, wrap.Program{
+		Name:          "ffmpeg",
+		Args:          []string{"-nostdin", "-hide_banner", "-nostats", "-i", encoded, "-map", "0:a:0", "-af", loudness + ":print_format=json", "-f", "null", "-"},
+		DiscardStdout: true,
+	}, 0, func(end wrap.Ended) contract.Outcome {
+		if end.Exit != 0 {
+			return end.Failed()
+		}
+		var ok bool
+		if measure, ok = measured(end.Stderr); !ok {
+			return end.Malformed()
+		}
+		return contract.Outcome{}
+	})
+	if len(outcome.Errors) != 0 || ctx.Err() != nil || measure == "" {
+		return false, outcome
+	}
+	outcome = j.step(ctx, wrap.Program{
+		Name: "ffmpeg",
+		Args: []string{
+			"-nostdin", "-hide_banner", "-nostats", "-loglevel", "error", "-i", encoded, "-map", "0:v", "-map", "0:a",
+			"-c", "copy", "-c:a", "aac", "-b:a", "160k", "-ar", "48000",
+			"-af", loudness + ":" + measure + ":linear=true:print_format=none", normalized,
+		},
+		DiscardStdout: true,
+	}, 0, func(end wrap.Ended) contract.Outcome {
+		if end.Exit != 0 {
+			return end.Failed()
+		}
+		if info, err := os.Lstat(normalized); err != nil || !info.Mode().IsRegular() || info.Size() <= 0 {
+			return conversionError(j.call, contract.Runtime, "no_output", "retry_hint", nil)
+		}
+		return contract.Outcome{}
+	})
+	return len(outcome.Errors) == 0, outcome
+}
+
+// measured reads the JSON that loudnorm prints last on stderr, and returns its
+// measures as the options of the second pass. It returns "" and true for
+// silent audio, whose loudness is -inf, and false when stderr holds no
+// readable measure.
+func measured(stderr []byte) (string, bool) {
+	key := bytes.LastIndex(stderr, []byte(`"input_i"`))
+	if key < 0 {
+		return "", false
+	}
+	start := bytes.LastIndexByte(stderr[:key], '{')
+	if start < 0 {
+		return "", false
+	}
+	var m struct {
+		I      string `json:"input_i"`
+		TP     string `json:"input_tp"`
+		LRA    string `json:"input_lra"`
+		Thresh string `json:"input_thresh"`
+		Offset string `json:"target_offset"`
+	}
+	if err := json.NewDecoder(bytes.NewReader(stderr[start:])).Decode(&m); err != nil {
+		return "", false
+	}
+	values := []string{m.I, m.TP, m.LRA, m.Thresh, m.Offset}
+	for _, value := range values {
+		number, err := strconv.ParseFloat(value, 64)
 		if err != nil {
-			return conversionIOError(call, err)
+			return "", false
 		}
-		published, err := os.Stat(output)
-		if err != nil || !published.Mode().IsRegular() || published.Size() != info.Size() {
-			return conversionError(call, contract.Runtime, "no_output", "retry_hint", nil)
+		if math.IsInf(number, 0) {
+			return "", true
 		}
-		return contract.Outcome{Data: conversionResult{Input: input, Output: output, SizeBytes: published.Size()}}
+	}
+	return fmt.Sprintf("measured_I=%s:measured_TP=%s:measured_LRA=%s:measured_thresh=%s:offset=%s", values[0], values[1], values[2], values[3], values[4]), true
+}
+
+// step runs one program under what remains of --timeout, and under limit
+// when it is shorter. wrap names that remainder when the deadline stops the
+// program, so the message names --timeout instead, as it does for a program
+// that the deadline leaves no time to start.
+func (j *job) step(ctx context.Context, p wrap.Program, limit time.Duration, decode func(wrap.Ended) contract.Outcome) contract.Outcome {
+	printer := j.call.Printer
+	stopped := map[string]any{"Name": p.Name, "Timeout": printer.Duration(j.timeout)}
+	rest := time.Until(j.deadline)
+	if rest <= 0 {
+		return contract.Outcome{Errors: []contract.Problem{{Code: contract.Runtime, Message: printer.T("wrap.timeout", stopped), Hint: printer.T("outcome.check_hint")}}}
+	}
+	p.Timeout = rest
+	if limit > 0 && limit < rest {
+		p.Timeout = limit
+	}
+	outcome := wrap.Run(ctx, j.call, p, decode)
+	remainder := map[string]any{"Name": p.Name, "Timeout": printer.Duration(rest)}
+	if p.Timeout == rest && len(outcome.Errors) != 0 && outcome.Errors[0].Message == printer.T("wrap.timeout", remainder) {
+		outcome.Errors[0].Message = printer.T("wrap.timeout", stopped)
+	}
+	return outcome
+}
+
+// publish moves the complete output from staging to its destination.
+func (j *job) publish(staged string, normalized bool) contract.Outcome {
+	info, err := os.Lstat(staged)
+	if err != nil || !info.Mode().IsRegular() || info.Size() <= 0 {
+		return conversionError(j.call, contract.Runtime, "no_output", "retry_hint", nil)
+	}
+	if problem := checkDestination(j.call, j.inputInfo, j.output, j.force); problem != nil {
+		return contract.Outcome{Errors: []contract.Problem{*problem}}
+	}
+	if j.force {
+		err = os.Rename(staged, j.output)
+	} else {
+		// Link creates a complete output atomically and refuses an existing
+		// destination even if another process creates it after the check.
+		err = os.Link(staged, j.output)
+	}
+	if os.IsExist(err) {
+		return conversionError(j.call, contract.ConfirmationRequired, "exists", "force_hint", map[string]any{"Output": j.output})
+	}
+	if err != nil {
+		return conversionIOError(j.call, err)
+	}
+	published, err := os.Stat(j.output)
+	if err != nil || !published.Mode().IsRegular() || published.Size() != info.Size() {
+		return conversionError(j.call, contract.Runtime, "no_output", "retry_hint", nil)
+	}
+	return contract.Outcome{Data: conversionResult{
+		Input: j.input, Output: j.output, SizeBytes: published.Size(),
+		Codec: j.codec, Encoder: j.encoder.Name, Normalized: normalized,
+	}}
+}
+
+// warn adds a warning with the extension's prefix, which needs no entry in
+// the manifest.
+func (j *job) warn(code, message, hint string, data map[string]any) {
+	j.warnings = append(j.warnings, contract.Problem{
+		Code:    contract.Code("VIDEO_CONVERT_" + code),
+		Message: j.call.Printer.T("video-convert."+message, data),
+		Hint:    j.call.Printer.T("video-convert."+hint, data),
 	})
 }
 
