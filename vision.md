@@ -5,7 +5,9 @@
 ## Wraps
 
 - HandBrakeCLI, the local executable from [HandBrake](https://handbrake.fr/), tested with HandBrakeCLI 1.11.2
-- The built-in `Fast 1080p30` CPU preset, with the MP4 container selected explicitly
+- The built-in `Fast 1080p30` preset, with the MP4 container selected explicitly, and the GPU encoder of the machine when it has one: Apple VideoToolbox or Intel Quick Sync
+- The two codecs that play most widely: H.264, the default, and H.265 in 10 bits
+- ffmpeg's `loudnorm` filter, which brings the audio to -16 LUFS, as the earlier video tools of the author did
 
 ## Refuses
 

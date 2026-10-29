@@ -32,7 +32,7 @@ A wrapped script goes in `worker/`. To take in a script, or to review the extens
 
 ## Recipes
 
-The recipes need Go, `just`, and `uv`, which runs the pinned Copier of `just update`. Scenarios use a shell stub of HandBrakeCLI. A real conversion needs HandBrakeCLI on PATH.
+The recipes need Go, `just`, and `uv`, which runs the pinned Copier of `just update`. Scenarios use shell stubs of HandBrakeCLI and ffmpeg. A real conversion needs HandBrakeCLI on PATH, and ffmpeg too, unless it runs with `--no-normalize` or the input has no audio.
 
 After Copier creates the repository, run `go mod tidy` once, which writes `go.sum` for the recipes. Then commit the repository with Git, since `just update` needs a clean Git tree. Run `lefthook install` once per clone, so `just check` runs before each push. GitHub runs it again for each push to `main` and each pull request.
 

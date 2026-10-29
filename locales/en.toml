@@ -1,6 +1,6 @@
 ["video-convert.summary"]
 description = "Help summary for the single video conversion command."
-other = "Convert one video to a sibling .converted.mp4 with HandBrakeCLI"
+other = "Convert one video to a sibling .converted.mp4 with HandBrakeCLI, on the GPU when the machine has one"
 
 ["video-convert.file"]
 description = "Help for the required local input video."
@@ -9,6 +9,14 @@ other = "Video to read without changing it"
 ["video-convert.force"]
 description = "Help for explicit consent to replace the existing converted output."
 other = "Replace the existing output only after a successful conversion"
+
+["video-convert.codec"]
+description = "Help for the video codec of the output, h264 or h265."
+other = "Video codec: h264, which plays everywhere, or h265, 10-bit, which keeps HDR"
+
+["video-convert.no_normalize"]
+description = "Help for the switch that keeps the audio loudness of the input."
+other = "Keep the audio loudness, instead of normalizing it to -16 LUFS"
 
 ["video-convert.timeout"]
 description = "Help for the total HandBrake execution limit."
@@ -67,9 +75,25 @@ description = "Recovery hint after a failed conversion."
 other = "Check the input video and the output folder's free space and permissions, then run a dry run before trying again."
 
 ["video-convert.result"]
-description = "Human success text. {{.Output}} is the verified output path and {{.Size}} its formatted size."
-other = "Created {{.Output}} ({{.Size}})."
+description = "Human success text. {{.Output}} is the verified output path, {{.Size}} its formatted size, {{.Codec}} the codec, {{.Encoder}} the HandBrake encoder, and {{.Normalize}} whether the audio was normalized."
+other = "Created {{.Output}} ({{.Size}}), {{.Codec}} with {{.Encoder}}{{if .Normalize}}, audio normalized to -16 LUFS{{end}}."
 
 ["video-convert.plan"]
-description = "Human dry-run text, after HandBrake's scan found a video title in the input. {{.File}} and {{.Output}} are the planned paths, {{.Preset}} the fixed preset."
-other = "Would convert {{.File}} to {{.Output}} with {{.Preset}}. HandBrake found a video in the input. Only the conversion decodes all of it."
+description = "Human dry-run text, after HandBrake's scan found a video title in the input. {{.File}} and {{.Output}} are the planned paths, {{.Preset}} the fixed preset, {{.Codec}} the codec, {{.Encoder}} the HandBrake encoder, and {{.Normalize}} whether the audio will be normalized."
+other = "Would convert {{.File}} to {{.Output}}, {{.Codec}} with {{.Encoder}} and {{.Preset}}{{if .Normalize}}, audio normalized to -16 LUFS{{end}}. HandBrake found a video in the input. Only the conversion decodes all of it."
+
+["video-convert.gpu_failed"]
+description = "Warning when the GPU encoder failed, so the command ran the CPU encoder of the codec instead. {{.Encoder}} names the GPU encoder and {{.CPU}} the CPU one."
+other = "HandBrake's GPU encoder {{.Encoder}} failed, so the command ran its slower CPU encoder {{.CPU}} instead."
+
+["video-convert.gpu_failed_hint"]
+description = "Hint after the GPU encoder failed."
+other = "Check the GPU driver if conversions keep falling back to the CPU."
+
+["video-convert.gpu_runtime_missing"]
+description = "Warning when Linux has an Intel GPU, but HandBrake cannot use Quick Sync."
+other = "This machine has an Intel GPU, but HandBrake cannot use it, so the CPU encodes the video, more slowly."
+
+["video-convert.gpu_runtime_hint"]
+description = "Hint that names Intel's media runtime, which Quick Sync needs."
+other = "Install Intel's media runtime, such as vpl-gpu-rt on Arch Linux with sudo pacman -S vpl-gpu-rt, then convert again."
