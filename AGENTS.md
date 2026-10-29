@@ -10,8 +10,9 @@ Read `extension-identity.md` in the pinned contract for the slug and command own
 
 1. `vision.md`: the job of the extension, what it wraps, and what it refuses
 2. `spec.md`: what proves the success of each command, why each effect exists, and its failures
-3. `manifest.toml`: the machine facts of each command, which `ncly describe video convert --json` shows once the extension is installed
-4. The contract, at the Nicely version that `go.mod` pins. `just contract` prints its folder. Start with "What a great extension does" in its `extensions.md`, and open only the parts that it links
+3. `qa.md`: how a user accepts the extension, with the UAT protocol of Nicely
+4. `manifest.toml`: the machine facts of each command, which `ncly describe video convert --json` shows once the extension is installed
+5. The contract, at the Nicely version that `go.mod` pins. `just contract` prints its folder. Start with "What a great extension does" in its `extensions.md`, and open only the parts that it links
 
 ## Change a command
 
