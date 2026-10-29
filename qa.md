@@ -47,6 +47,7 @@ After the UAT, run `just uninstall` in the checkout of the extension. For an ins
 
 - HDR HLG input gives an 8-bit output tagged HLG. Nobody checked it on a real screen yet.
 - With `--json`, the error goes to stderr, as the contract says ([nicely#352](https://github.com/pascalandy/nicely/issues/352)).
+- `locales/` holds only `en.toml`, so under `--lang fr-CA` the help and the errors print in English without a warning, as the contract's fallback to `en` says. Nicely's own text is in English too.
 
 ## Gotchas
 

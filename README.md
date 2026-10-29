@@ -38,6 +38,8 @@ ncly skill view video-convert
 
 Use `ncly video convert --help` for options. Machine callers use `--json --no-input`; successful JSON includes the verified absolute `output` path and `size_bytes`. The default timeout is two hours.
 
+The extension speaks English only. Under another language, such as `--lang fr-CA`, its help and errors fall back to English without a warning.
+
 The command has no batches, records, or progress display. See [spec.md](spec.md) for failures and filesystem limits, and [AGENTS.md](AGENTS.md) to change or release the extension.
 
 ## Let your agent find it
