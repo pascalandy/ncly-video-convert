@@ -29,7 +29,7 @@ A failed conversion keeps the previous output. Errors, timeouts, Ctrl-C, and SIG
 
 Install [Nicely](https://github.com/pascalandy/nicely#install) v0.23.0 or later, so that `ncly` is on your PATH. An older `ncly` skips this named extension.
 
-Also install Go, just, HandBrakeCLI, and ffmpeg, such as `brew install handbrake ffmpeg` on macOS or `sudo pacman -S handbrake-cli ffmpeg` on Arch Linux. On Linux with an Intel GPU, Quick Sync also needs Intel's media runtime, such as `sudo pacman -S vpl-gpu-rt` on Arch Linux. Without it, the command encodes on the CPU and warns. Replace TAG with a release tag, such as `v0.1.1`, then build the extension:
+Also install Go, just, HandBrakeCLI, and ffmpeg, such as `brew install handbrake ffmpeg` on macOS or `sudo pacman -S handbrake-cli ffmpeg` on Arch Linux. On Linux with an Intel GPU, Quick Sync also needs Intel's media runtime, such as `sudo pacman -S vpl-gpu-rt` on Arch Linux. Without it, the command encodes on the CPU and warns. Replace TAG with the highest release tag, then build the extension:
 
 ```sh
 git clone --branch TAG https://github.com/pascalandy/ncly-video-convert
@@ -39,7 +39,7 @@ ncly describe video convert --json
 ncly skill view video-convert
 ```
 
-`git ls-remote --tags https://github.com/pascalandy/ncly-video-convert` lists the available tags. For an annotated tag, Git can warn that the tag `is not a commit!`, then note a detached HEAD. The clone holds the tagged commit.
+`git ls-remote --tags --refs --sort=-v:refname https://github.com/pascalandy/ncly-video-convert` lists the tags, highest first. For an annotated tag, Git can warn that the tag `is not a commit!`, then note a detached HEAD. The clone holds the tagged commit.
 
 `ncly describe` confirms the install with `video convert` and the source `extension`. `just install` puts the extension into Nicely's extensions folder, in place of an earlier install, and grants no key. `just uninstall` in the clone removes it. An agent reads `ncly skill view video-convert` to learn when to use the extension.
 
