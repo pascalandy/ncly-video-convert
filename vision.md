@@ -14,4 +14,5 @@
 - Overwriting an output without explicit `--force`
 - Changing the input, including when the output is a link to it
 - Publishing a failed, empty, or interrupted conversion
+- Converting a still image, such as a PNG or a JPEG, which HandBrake reads as a title of one frame
 - Other video jobs, records, batches, progress display, or arbitrary HandBrake arguments

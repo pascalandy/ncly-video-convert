@@ -29,7 +29,8 @@ stderr '"hint":"[^"]*faux\.mp4'
 exec sh -c 'for p in .ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
 
 # Only exit 2 of the scan maps to VIDEO_CONVERT_UNREADABLE. Another failed
-# scan stays RUNTIME, and so does a scan without a title set.
+# scan stays RUNTIME, and so does a scan without a title set, or whose first
+# title has no duration, which tells a video from a still image.
 env STUB=scanfail
 exits 1 ncly video convert 'clips/one clip.mov'
 stderr '"code":"RUNTIME"'
@@ -39,6 +40,13 @@ env STUB=notitles
 exits 1 ncly video convert 'clips/one clip.mov' --dry-run
 stderr '"code":"RUNTIME"'
 ! exists encoded.log
+env STUB=noduration
+exits 1 ncly video convert 'clips/one clip.mov' --dry-run
+stderr '"code":"RUNTIME"'
+exits 1 ncly video convert 'clips/one clip.mov'
+stderr '"code":"RUNTIME"'
+! exists encoded.log
+! exists 'clips/one clip.converted.mp4'
 env STUB=
 
 # A successful process must create a nonempty output. Both transport paths work.
@@ -229,8 +237,9 @@ if [ -n "$scan" ]; then
   if [ "$STUB" = slowprep ]; then sleep 0.6; fi
   if grep -qx 'not a video' "$input"; then echo 'No title found.' >&2; exit 2; fi
   if [ "$STUB" = notitles ]; then echo 'Version: {}'; exit 0; fi
+  if [ "$STUB" = noduration ]; then echo 'JSON Title Set: {"TitleList":[{"AudioList":[]}]}'; exit 0; fi
   echo 'Version: {}'
-  echo 'JSON Title Set: {"TitleList":[{"AudioList":[]}]}'
+  echo 'JSON Title Set: {"TitleList":[{"AudioList":[],"Duration":{"Ticks":360000},"FrameRate":{"Num":27000000,"Den":1080000}}]}'
   exit 0
 fi
 if [ ! -f "$input" ] || [ "$preset" != 'Fast 1080p30' ] || [ "$format" != av_mp4 ]; then

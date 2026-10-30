@@ -37,7 +37,7 @@ while [ "$#" -gt 0 ]; do
     --input) input=$2; shift ;;
     --output) output=$2; shift ;;
     --help) exit 0 ;;
-    --scan) echo 'JSON Title Set: {"TitleList":[{"AudioList":[]}]}'; exit 0 ;;
+    --scan) echo 'JSON Title Set: {"TitleList":[{"AudioList":[],"Duration":{"Ticks":360000},"FrameRate":{"Num":27000000,"Den":1080000}}]}'; exit 0 ;;
   esac
   shift
 done

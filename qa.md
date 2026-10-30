@@ -4,7 +4,7 @@ This file answers one question: what does the UAT of `ncly video convert` add to
 
 ## Prerequisites
 
-- `just acceptance` passes on the fixture that [spec.md](spec.md#acceptance) names in `## Acceptance`, in a clone at the tested tag. It checks the Result, the Fidelity, and the Determinism below, and that a still image is still accepted ([nicely#351](https://github.com/pascalandy/nicely/issues/351))
+- `just acceptance` passes on the fixture that [spec.md](spec.md#acceptance) names in `## Acceptance`, in a clone at the tested tag. It checks the Result, the Fidelity, and the Determinism below, and that a still image is refused
 - HandBrakeCLI, at the version that [vision.md](vision.md) names as tested
 - `ffprobe` and `ffmpeg`, for the independent check. The command runs `ffmpeg` too, to normalize the audio
 - On Linux with an Intel GPU, Intel's media runtime, such as `vpl-gpu-rt` on Arch Linux, so that Quick Sync encodes
@@ -39,7 +39,7 @@ This file answers one question: what does the UAT of `ncly video convert` add to
 | Output that is a symbolic link, with or without `--force` | Exit 2 with `USAGE_INVALID` |
 | Ctrl-C during the scan of the dry run or during the encode | Exit 130 with `INTERRUPTED` |
 | SIGTERM to `ncly` during the scan of the dry run or during the encode | Exit 143 with `TERMINATED` |
-| Still image | A refusal, as [spec.md](spec.md#acceptance) says in `## Acceptance`. Today it gives a 0.04 s video ([nicely#351](https://github.com/pascalandy/nicely/issues/351)) |
+| Still image, such as a PNG or a JPEG | Exit 2 with `VIDEO_CONVERT_UNREADABLE`, as [spec.md](spec.md#acceptance) says in `## Acceptance`. The message and hint name the file |
 
 After each of these cases, the input, any previous output, and the target of a link stay the same. No `.ncly-video-convert-*` staging folder and no HandBrakeCLI process stay.
 

@@ -1,0 +1,82 @@
+# HandBrakeCLI accepts a still image as a title of one frame: 0 ticks for a
+# PNG, and 3600 ticks for a JPEG, which is one frame at 25 fps. Ticks count
+# 90 kHz. The domain refuses such a title in both modes, before any encode.
+# The stub reads the ticks and the frame rate of each input from its content.
+chmod 755 bin/HandBrakeCLI
+env NCLY_NO_INPUT=1
+env NCLY_JSON=1
+
+# A title of 0 ticks, as HandBrake reads a PNG, is a still image.
+exits 2 ncly video convert still.png --dry-run
+stderr '"code":"VIDEO_CONVERT_UNREADABLE"'
+stderr '"message":"[^"]*still\.png is a still image, not a video\.'
+stderr '"hint":"[^"]*still\.png'
+exits 2 ncly video convert still.png
+stderr '"code":"VIDEO_CONVERT_UNREADABLE"'
+stderr '"message":"[^"]*still\.png is a still image, not a video\.'
+stderr '"hint":"[^"]*still\.png'
+
+# A title of one frame at 25 fps, as HandBrake reads a JPEG, is a still image.
+exits 2 ncly video convert photo.jpg --dry-run
+stderr '"code":"VIDEO_CONVERT_UNREADABLE"'
+stderr '"message":"[^"]*photo\.jpg is a still image, not a video\.'
+stderr '"hint":"[^"]*photo\.jpg'
+exits 2 ncly video convert photo.jpg
+stderr '"code":"VIDEO_CONVERT_UNREADABLE"'
+stderr '"message":"[^"]*photo\.jpg is a still image, not a video\.'
+stderr '"hint":"[^"]*photo\.jpg'
+
+# Without a positive frame rate, a title of 0 ticks is a still image too.
+exits 2 ncly video convert norate.png
+stderr '"code":"VIDEO_CONVERT_UNREADABLE"'
+! exists encoded.log
+! exists still.converted.mp4
+! exists photo.converted.mp4
+! exists norate.converted.mp4
+exec sh -c 'for p in .ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
+
+# A title of 3601 ticks lasts just over one frame at 25 fps, so it converts.
+ncly video convert over.mov --dry-run
+stdout '"dry_run":true'
+ncly video convert over.mov
+stdout '"size_bytes":8'
+cmp over.converted.mp4 expected.mp4
+
+# Without a positive frame rate, a title of 1 tick is no still image.
+ncly video convert norate.mov
+stdout '"size_bytes":8'
+cmp norate.converted.mp4 expected.mp4
+
+-- still.png --
+0 27000000 1080000
+-- photo.jpg --
+3600 27000000 1080000
+-- norate.png --
+0 0 0
+-- over.mov --
+3601 27000000 1080000
+-- norate.mov --
+1 0 0
+-- expected.mp4 --
+encoded
+-- bin/HandBrakeCLI --
+#!/bin/sh
+# Each input holds its ticks, then the numerator and the denominator of its
+# frame rate, which HandBrake gives on a 27 MHz clock.
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --help) echo '   x264'; echo '   x265_10bit'; exit 0 ;;
+    --input) input=$2; shift ;;
+    --output) output=$2; shift ;;
+    --scan) scan=1 ;;
+  esac
+  shift
+done
+if [ -n "$scan" ]; then
+  read -r ticks num den < "$input"
+  echo 'Version: {}'
+  echo "JSON Title Set: {\"TitleList\":[{\"AudioList\":[],\"Duration\":{\"Hours\":0,\"Minutes\":0,\"Seconds\":0,\"Ticks\":$ticks},\"FrameRate\":{\"Num\":$num,\"Den\":$den}}]}"
+  exit 0
+fi
+echo invoked >> "$WORK/encoded.log"
+echo encoded > "$output"

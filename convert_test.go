@@ -45,3 +45,30 @@ func TestIntelGPU(t *testing.T) {
 		t.Error("an Intel card reads as another vendor")
 	}
 }
+
+// HandBrake reads a PNG as 0 ticks and a JPEG as one frame at 25 fps. Its
+// frame rate counts a 27 MHz clock, and ticks count 90 kHz.
+func TestStill(t *testing.T) {
+	const num, den = 27000000, 1080000
+	for _, c := range []struct {
+		name     string
+		ticks    uint64
+		num, den int64
+		want     bool
+	}{
+		{"PNG", 0, num, den, true},
+		{"JPEG, one frame", 3600, num, den, true},
+		{"just over one frame", 3601, num, den, false},
+		{"three frames", 10800, num, den, false},
+		{"no frame rate, no tick", 0, 0, 0, true},
+		{"no frame rate, one tick", 1, 0, 0, false},
+		{"negative frame rate", 0, -num, den, true},
+		{"a product past 64 bits", 1 << 62, num, den, false},
+	} {
+		title := title{Duration: &struct{ Ticks uint64 }{c.ticks}}
+		title.FrameRate.Num, title.FrameRate.Den = c.num, c.den
+		if got := title.still(); got != c.want {
+			t.Errorf("%s: still = %v, want %v", c.name, got, c.want)
+		}
+	}
+}

@@ -105,7 +105,7 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 if [ -n "$scan" ]; then
-  echo 'JSON Title Set: {"TitleList":[{"AudioList":[]}]}'
+  echo 'JSON Title Set: {"TitleList":[{"AudioList":[],"Duration":{"Ticks":360000},"FrameRate":{"Num":27000000,"Den":1080000}}]}'
   exit 0
 fi
 echo "${encoder:-preset} ${quality:--} ${speed:--} ${decoder:--}" >> "$WORK/encoded.log"

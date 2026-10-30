@@ -103,7 +103,7 @@ done
 if [ -n "$scan" ]; then
   audio='[{"Description":"AAC"}]'
   if grep -qx 'no audio' "$input"; then audio='[]'; fi
-  echo "JSON Title Set: {\"TitleList\":[{\"AudioList\":$audio}]}"
+  echo "JSON Title Set: {\"TitleList\":[{\"AudioList\":$audio,\"Duration\":{\"Ticks\":360000},\"FrameRate\":{\"Num\":27000000,\"Den\":1080000}}]}"
   exit 0
 fi
 echo invoked >> "$WORK/encoded.log"

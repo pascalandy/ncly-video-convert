@@ -153,14 +153,23 @@ awk -v a="$in_duration" -v b="$h265_duration" 'BEGIN { d = a - b; exit !(d <= 0.
 	die "the duration of the h265 output, $h265_duration s, is not within 0.1 s of $in_duration s"
 audio265="$(heard "$output")"
 
-# The domain refuses a still image, which HandBrakeCLI accepts. Until
-# nicely#351 lands, the command accepts it too, and this check expects that.
-ffmpeg -nostdin -v error -f lavfi -i testsrc2=size=320x240 -frames:v 1 "$work/still.png"
-code=0
-(cd "$work" && ncly "${command[@]}" "$work/still.png" --json --no-input) >/dev/null 2>"$scratch/refusal" || code=$?
-if [[ "$code" == 2 ]] && grep -qF '"code":"VIDEO_CONVERT_UNREADABLE"' "$scratch/refusal"; then
-	die "the still image is refused now: require that refusal here, and close nicely#351"
-fi
-[[ "$code" == 0 ]] || die "$work/still.png: want exit 0 until nicely#351 lands, got exit $code: $(cat "$scratch/refusal")"
+# The domain refuses a still image, which HandBrakeCLI accepts: HandBrake
+# reads a PNG as a title of 0 ticks, and a JPEG as one frame at 25 fps.
+refused() {
+	local code=0
+	(cd "$work" && ncly "${command[@]}" "$@" --json --no-input) >/dev/null 2>"$scratch/refusal" || code=$?
+	if [[ "$code" != 2 ]] || ! grep -qF '"code":"VIDEO_CONVERT_UNREADABLE"' "$scratch/refusal"; then
+		die "ncly ${command[*]} $*: want exit 2 with VIDEO_CONVERT_UNREADABLE, got exit $code: $(cat "$scratch/refusal")"
+	fi
+}
+for still in still.png still.jpg; do
+	ffmpeg -nostdin -v error -f lavfi -i testsrc2=size=320x240 -frames:v 1 "$work/$still"
+	refused "$work/$still" --dry-run
+	refused "$work/$still"
+	[[ ! -e "$work/still.converted.mp4" ]] || die "$work/$still gave the output $work/still.converted.mp4"
+	for stage in "$work"/.ncly-video-convert-*; do
+		[[ ! -e "$stage" ]] || die "$work/$still left the staging folder $stage"
+	done
+done
 
-echo "acceptance: ncly ${command[*]} passed on $input: H.264 with $encoder and AAC at $audio, $got, $out_duration s, orientation SSIM $orientation; two runs give $determinism; --codec h265 gives $h265 with $encoder265, $h265_duration s, AAC at $audio265; a still image is still accepted (nicely#351)"
+echo "acceptance: ncly ${command[*]} passed on $input: H.264 with $encoder and AAC at $audio, $got, $out_duration s, orientation SSIM $orientation; two runs give $determinism; --codec h265 gives $h265 with $encoder265, $h265_duration s, AAC at $audio265; a PNG and a JPEG are refused as still images"
