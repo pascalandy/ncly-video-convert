@@ -7,6 +7,7 @@ env NCLY_NO_INPUT=1
 env NCLY_JSON=1
 
 # A title of 0 ticks, as HandBrake reads a PNG, is a still image.
+# spec: still-image
 exits 2 ncly video convert still.png --dry-run
 stderr '"code":"VIDEO_CONVERT_UNREADABLE"'
 stderr '"message":"[^"]*still\.png is a still image, not a video\.'
@@ -17,6 +18,7 @@ stderr '"message":"[^"]*still\.png is a still image, not a video\.'
 stderr '"hint":"[^"]*still\.png'
 
 # A title of one frame at 25 fps, as HandBrake reads a JPEG, is a still image.
+# spec: still-image
 exits 2 ncly video convert photo.jpg --dry-run
 stderr '"code":"VIDEO_CONVERT_UNREADABLE"'
 stderr '"message":"[^"]*photo\.jpg is a still image, not a video\.'
@@ -27,6 +29,7 @@ stderr '"message":"[^"]*photo\.jpg is a still image, not a video\.'
 stderr '"hint":"[^"]*photo\.jpg'
 
 # Without a positive frame rate, a title of 0 ticks is a still image too.
+# spec: still-image
 exits 2 ncly video convert norate.png
 stderr '"code":"VIDEO_CONVERT_UNREADABLE"'
 ! exists encoded.log
@@ -36,6 +39,7 @@ stderr '"code":"VIDEO_CONVERT_UNREADABLE"'
 exec sh -c 'for p in .ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
 
 # A title of 3601 ticks lasts just over one frame at 25 fps, so it converts.
+# spec: still-image
 ncly video convert over.mov --dry-run
 stdout '"dry_run":true'
 ncly video convert over.mov
@@ -43,6 +47,7 @@ stdout '"size_bytes":8'
 cmp over.converted.mp4 expected.mp4
 
 # Without a positive frame rate, a title of 1 tick is no still image.
+# spec: still-image
 ncly video convert norate.mov
 stdout '"size_bytes":8'
 cmp norate.converted.mp4 expected.mp4

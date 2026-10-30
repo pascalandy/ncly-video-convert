@@ -48,6 +48,7 @@ rm ffmpeg.log
 
 # A first pass without its measures, or a failed second pass, fails the run
 # and keeps the previous output.
+# spec: normalize-failed
 env STUB=nomeasure
 exits 1 ncly video convert talk.mov --force
 stderr '"code":"RUNTIME"'
@@ -59,6 +60,7 @@ cmp talk.converted.mp4 normalized.mp4
 
 # A first pass that outlasts --timeout fails the run too, and the message
 # names the given timeout.
+# spec: normalize-failed
 env STUB=ffmpeghang
 exits 1 ncly video convert talk.mov --force --timeout 1s
 stderr '"code":"RUNTIME"'
@@ -68,6 +70,7 @@ exec sh -c 'for p in .ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
 env STUB=
 
 # Without ffmpeg, both modes fail before any encode, unless --no-normalize.
+# spec: no-ffmpeg
 mkdir tools
 exec sh -c 'for t in grep; do ln -s "$(command -v $t)" tools/$t; done'
 mv bin/ffmpeg bin/hidden-ffmpeg

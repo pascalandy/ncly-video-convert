@@ -109,11 +109,14 @@ got="$(probe v:0 stream=width "$output")x$(probe v:0 stream=height "$output")"
 if [[ "${size%x*}" -le 1920 && "${size#*x}" -le 1080 && "$got" != "$size" ]]; then
 	die "the frame of $output is $got, want $size"
 fi
+# spec: duration
 in_duration="$(duration "$input")" out_duration="$(duration "$output")"
 awk -v a="$in_duration" -v b="$out_duration" 'BEGIN { d = a - b; exit !(d <= 0.1 && d >= -0.1) }' ||
 	die "the duration of $output, $out_duration s, is not within 0.1 s of $in_duration s"
+# spec: orientation
 orientation="$(ssim "$input" "$output")"
 above "$orientation" 0.8 || die "$output does not show the input the same way up: SSIM $orientation, want 0.8 or more"
+# spec: loudness
 audio="$(heard "$output")"
 
 # A second run checks determinism, as the Determinism criterion of qa.md says.
@@ -142,6 +145,7 @@ else
 fi
 
 # --codec h265 gives H.265 Main 10, with the hvc1 tag that Apple's players need.
+# spec: hevc-output
 (cd "$work" && ncly "${command[@]}" "$input" --codec h265 --force --json --no-input) >"$scratch/answer" 2>"$scratch/stderr" ||
 	die "the h265 run failed: $(cat "$scratch/stderr")"
 grep -qF '"codec":"h265"' "$scratch/answer" || die "the h265 answer names another codec"
@@ -162,6 +166,7 @@ refused() {
 		die "ncly ${command[*]} $*: want exit 2 with VIDEO_CONVERT_UNREADABLE, got exit $code: $(cat "$scratch/refusal")"
 	fi
 }
+# spec: still-image
 for still in still.png still.jpg; do
 	ffmpeg -nostdin -v error -f lavfi -i testsrc2=size=320x240 -frames:v 1 "$work/$still"
 	refused "$work/$still" --dry-run

@@ -22,15 +22,24 @@ The sole user write creates or replaces the converted MP4. No network, paid serv
 
 ## Failures
 
-| Condition | Code |
-|---|---|
-| Input missing, unreadable, or not regular; timeout invalid; codec other than `h264` or `h265`; destination unsafe | `USAGE_INVALID` |
-| The scan exits 2 because HandBrake finds no video title, such as in a text, audio-only, empty, or truncated file. The message and hint name the file | `VIDEO_CONVERT_UNREADABLE`, exit 2 |
-| The scan finds a first title of one frame or less, as HandBrake reads a still image. The message and hint name the file | `VIDEO_CONVERT_UNREADABLE`, exit 2 |
-| Output exists without overwrite consent, including an arrival during conversion | `CONFIRMATION_REQUIRED` |
-| HandBrakeCLI missing, or ffmpeg missing for an input with audio, without `--no-normalize` | `PREREQ_MISSING` |
-| The output folder cannot be read, written or searched; the scan exits with another nonzero code, prints no title set or no duration of the first title, or times out; the CPU encode exits nonzero, times out, or produces no nonempty regular output; ffmpeg exits nonzero, prints no measure, or times out; publication or cleanup fails | `RUNTIME` |
-| Ctrl-C or SIGTERM | `INTERRUPTED` or `TERMINATED` |
+| ID | Condition | Code |
+|---|---|---|
+| `bad-input` | Input missing, unreadable, or not regular | `USAGE_INVALID` |
+| `bad-timeout` | Timeout invalid | `USAGE_INVALID` |
+| `bad-codec` | Codec other than `h264` or `h265` | `USAGE_INVALID` |
+| `unsafe-output` | Destination unsafe | `USAGE_INVALID` |
+| `no-video-title` | The scan exits 2 because HandBrake finds no video title, such as in a text, audio-only, empty, or truncated file. The message and hint name the file | `VIDEO_CONVERT_UNREADABLE`, exit 2 |
+| `output-exists` | Output exists without overwrite consent | `CONFIRMATION_REQUIRED` |
+| `output-arrives` | Output arrives during conversion, without overwrite consent | `CONFIRMATION_REQUIRED` |
+| `no-handbrake` | HandBrakeCLI missing | `PREREQ_MISSING` |
+| `no-ffmpeg` | ffmpeg missing for an input with audio, without `--no-normalize` | `PREREQ_MISSING` |
+| `folder-access` | The output folder cannot be read, written or searched | `RUNTIME` |
+| `scan-failed` | The scan exits with another nonzero code, prints no title set or no duration of the first title, or times out | `RUNTIME` |
+| `encode-failed` | The CPU encode exits nonzero, times out, or produces no nonempty regular output | `RUNTIME` |
+| `normalize-failed` | ffmpeg exits nonzero, prints no measure, or times out | `RUNTIME` |
+| `publish-failed` | Publication or cleanup fails | `RUNTIME` |
+| `interrupted` | Ctrl-C | `INTERRUPTED` |
+| `terminated` | SIGTERM | `TERMINATED` |
 
 ## Warnings
 
@@ -47,12 +56,15 @@ HandBrake must support the built-in preset. Availability is checked without pars
 
 ## Acceptance
 
-The real input is the fixture `IMG_1642.MOV` of the [fixture registry](https://github.com/pascalandy/nicely/blob/main/docs/qa/fixtures.md) of Nicely. The output keeps these properties of the input:
+The real input is the fixture `IMG_1642.MOV` of the [fixture registry](https://github.com/pascalandy/nicely/blob/main/docs/qa/fixtures.md) of Nicely.
 
-- The orientation on screen
-- The duration, within 0.1 s
-- An audio track, at -16 LUFS within 0.5 LU, with a true peak of at most -1 dBTP, at 48 kHz
+- `orientation`: The output keeps the orientation of the input on screen
+- `duration`: The output keeps the duration of the input, within 0.1 s
+- `loudness`: The output keeps an audio track, at -16 LUFS within 0.5 LU, with a true peak of at most -1 dBTP, at 48 kHz
+- `hevc-output`: With `--codec h265`, the output is H.265 Main 10 with the `hvc1` tag, which Apple's players need
 
-With `--codec h265`, the output is H.265 Main 10 with the `hvc1` tag, which Apple's players need.
+The domain refuses these inputs:
 
-The command refuses a still image, such as a PNG or a JPEG, which HandBrakeCLI accepts, with `VIDEO_CONVERT_UNREADABLE`.
+| ID | Input that HandBrakeCLI accepts | Code |
+|---|---|---|
+| `still-image` | A still image, such as a PNG or a JPEG, which the scan reads as a first title of one frame or less. The message and hint name the file | `VIDEO_CONVERT_UNREADABLE`, exit 2 |

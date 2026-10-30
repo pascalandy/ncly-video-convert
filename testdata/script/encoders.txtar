@@ -59,6 +59,7 @@ rm encoded.log
 
 # When the CPU encoder fails too, the run fails and publishes nothing, and
 # the warning claims no output.
+# spec: encode-failed
 env STUB=allfail
 exits 1 ncly video convert broken.mov
 stderr '"code":"RUNTIME"'
@@ -68,6 +69,7 @@ env STUB=
 env GPU=
 
 # Only h264 and h265 are codecs.
+# spec: bad-codec
 exits 2 ncly video convert plain.mov --codec av1 --force
 stderr '"code":"USAGE_INVALID"'
 
