@@ -1,0 +1,116 @@
+{
+  "version": 1,
+  "confirmed_at": "2026-10-30T09:47:54Z",
+  "source_commit": "752ff5c8ede5d3fd990567674d32ca8e0d2a0ac5",
+  "sdk_version": "v0.23.4",
+  "inputs": {
+    "cmd/ncly-video-convert/main.go": "049f07b92ebc16bb40aeb7dae10036706f5ce5a568034493dfdbda58025a9822",
+    "convert.go": "59a82879111475978bd206baf88f582fd6ca4e0a286339e91617207b666492c0",
+    "convert_test.go": "636396706878f2dd7662a86651a282f5848b00777d8598864b86192cc3d74e25",
+    "extension.go": "03421d4be67a59a07e746d9533c8496a0b6564f3bff1fe88355318d6e5e359e5",
+    "extension_test.go": "1722c49c29306bd7725c8b9ba8b60250207972379b6f014f32ce586c19cd5e37",
+    "go.mod": "d7f093f6860fc961755621deb602faa6c8628e1ed7a5a547e8aa0a45954f21d1",
+    "go.sum": "12a9f4188cad36dbca3c607b62b836835811fe3d47aaa34c173de9c13352c698",
+    "internal/publication/record.go": "1cee66c097ee2399cff11d2501d3361fbf731d9863123c91816377298ea3e17c",
+    "internal/verify-publication/main.go": "46957df34f00a9107b81b7ca33224ebfdb7041cb348e8cad19433549d2229494",
+    "internal/verify-publication/verify.go": "939cd6185556aeff507e533dd02a2f00315bbe94b78c69cf154b968c1f04c2c5",
+    "justfile": "2c565bae666ed271a2cbfdc9061c701854ceb962148a849d1ccc28592b364c12",
+    "locales/en.toml": "babc5c8ec03e4bec31b2389065348c606ca8281addb1c38d2a4b1a9a34f0b37f",
+    "manifest.toml": "872eb4981794237b5ed28135d7525dad47e7f5a2f76aa37056bc5cf750bc63a9",
+    "nicely/go.mod": "46359855671887d396a9983399d4a92aeaebf8cbd6a3e04e3c0015588a0e20f8",
+    "nicely/sdk/command/answer.go": "0dba4949d371558e6df9d14477814a233018fcbe9510509ad694e427ab030384",
+    "nicely/sdk/contract/answer.go": "28184ca5c821490a3a30bc8921ba51562517f680f63414dcd8b7a33d8bce08f0",
+    "nicely/sdk/extension/handle.go": "753492e37c0a3434755b944827588d75e7793a92482bc703f85502174a48d663",
+    "nicely/sdk/runner/signal.go": "5d661d02877dee9939dc5bed44df8b9dfd4cd8a7f9377f5c6ead9e77add38693",
+    "nicely/version": "v0.23.4",
+    "publication_fv_test.go": "0319b416fabc3c551d53a9f0236073d9fdc0d47d8d5edbe1821fc07df5b8fdc1",
+    "publication_record_test.go": "4e435f628c78cacb6c5a1bf74af2a9390cd026bcd28dbbce88f74726297286d0",
+    "verification/publication/CleanupRefusal.cfg": "82f594a6fce6a22848cc8a08a461febaafafe085ac55f0f66e53fca432e71bf0",
+    "verification/publication/Input.cfg": "7ccb26fd6c2a549e1e52bd69902cc6075a2f45a60f4bce1933ec748d05931fd2",
+    "verification/publication/Kill.cfg": "0d49708dcb103eaea11d05f632741ca4cbcfae748be9a4e46df4d84eec79c3d5",
+    "verification/publication/Partial.cfg": "bca3df6439adb85cdb8c1a3ce48ea00c97b190b4ebf87c600eedc3bb00a357cc",
+    "verification/publication/Publication.tla": "157ccd88d8a466696ce7d0882d9054f3522cd6efdcd0dc191058792af58fd6a5",
+    "verification/publication/Replace.cfg": "19614c1242c967fa6b551544d59d796c9c0d1729d46fbbac3ea51c31a27faa03",
+    "verification/publication/Safety.cfg": "015e80c5f1c8f419dc006ee53940c683ac90ad7acd9517f581757888a9c13280",
+    "verification/publication/Signal.cfg": "fa94fdf0345be86e03f45fa0f57f79bbc4482151bf52636c68c82994be2f01e8",
+    "verification/publication/SignalAfterCommit.cfg": "8d4f2c28471e874a5fae1ae3a8e5445bc764366100a699ce51c75af7706e3798",
+    "verification/publication/SignalBeforeCommit.cfg": "e5879499e0843b9e60113ad2683d3111125bf975166b8198807bf37e43a56480",
+    "verification/publication/tools.json": "700ad5ed2680077e017107537e720b45088ffc1cdc426e742dc22c548afcf104"
+  },
+  "results": [
+    {
+      "name": "Safety",
+      "exit": 0,
+      "distinct": 21937,
+      "depth": 25
+    },
+    {
+      "name": "Partial",
+      "exit": 12,
+      "violation": "CompletePublic",
+      "distinct": 114,
+      "depth": 3
+    },
+    {
+      "name": "Replace",
+      "exit": 12,
+      "violation": "Consent",
+      "distinct": 18695,
+      "depth": 17
+    },
+    {
+      "name": "Input",
+      "exit": 12,
+      "violation": "InputPreserved",
+      "distinct": 74,
+      "depth": 3
+    },
+    {
+      "name": "Signal",
+      "exit": 12,
+      "violation": "SignalMeansNoCommit",
+      "distinct": 13590,
+      "depth": 13
+    },
+    {
+      "name": "SignalBeforeCommit",
+      "exit": 12,
+      "violation": "NoCanceledCommit",
+      "distinct": 9262,
+      "depth": 10
+    },
+    {
+      "name": "SignalAfterCommit",
+      "exit": 12,
+      "violation": "SignalMeansNoCommit",
+      "distinct": 1789,
+      "depth": 13
+    },
+    {
+      "name": "Kill",
+      "exit": 12,
+      "violation": "NoStageAfterExit",
+      "distinct": 122,
+      "depth": 3
+    },
+    {
+      "name": "CleanupRefusal",
+      "exit": 12,
+      "violation": "NoStageAfterExit",
+      "distinct": 1027,
+      "depth": 5
+    },
+    {
+      "name": "probe",
+      "exit": 0
+    },
+    {
+      "name": "mutation",
+      "exit": 1
+    },
+    {
+      "name": "restored",
+      "exit": 0
+    }
+  ]
+}

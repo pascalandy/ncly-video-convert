@@ -11,6 +11,11 @@ default:
 check:
     go run github.com/pascalandy/nicely/sdk/extensionrepo/cmd/extensionrepo check
 
+# Prove publication, signals, and the negative controls in a scratch copy
+[no-exit-message]
+verify-publication:
+    @go run ./internal/verify-publication
+
 # Check the committed SHA in a detached scratch worktree, then sign that exact SHA
 signoff:
     go run ./internal/export signoff
