@@ -117,12 +117,33 @@ exits 1 ncly video convert slow.mov --dry-run --timeout 1s
 stderr '"code":"RUNTIME"'
 stderr '"message":"HandBrakeCLI did not finish within 1 s, so it was stopped\.'
 
+# A scan that outlasts --timeout fails both modes before any encode.
+rm encoded.log
+env STUB=hangscan
+exits 1 ncly video convert slow.mov --dry-run --timeout 1s
+stderr '"code":"RUNTIME"'
+stderr '"message":"HandBrakeCLI did not finish within 1 s, so it was stopped\.'
+exits 1 ncly video convert slow.mov --timeout 1s
+stderr '"code":"RUNTIME"'
+! exists encoded.log
+! exists slow.converted.mp4
+exec sh -c 'for p in .ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
+
 # Invalid input, timeout and unsafe output are rejected before encoding.
 env STUB=
 exits 2 ncly video convert absent.mov
 stderr '"code":"USAGE_INVALID"'
 exits 2 ncly video convert clips
 stderr '"code":"USAGE_INVALID"'
+rm encoded.log
+cp original.mov secret.mov
+chmod 000 secret.mov
+exits 2 ncly video convert secret.mov --dry-run
+stderr '"code":"USAGE_INVALID"'
+exits 2 ncly video convert secret.mov
+stderr '"code":"USAGE_INVALID"'
+chmod 644 secret.mov
+! exists encoded.log
 exits 2 ncly video convert missing.mov --timeout soon
 stderr '"code":"USAGE_INVALID"'
 symlink linked.converted.mp4 -> linked.mov
@@ -171,6 +192,19 @@ stderr '"code":"RUNTIME"'
 chmod 755 dropbox
 ! exists dropbox/clip.converted.mp4
 exec sh -c 'for p in dropbox/.ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
+
+# A failed publication fails the run, and so does a failed cleanup. The stub
+# encode makes the output's folder read-only, so the hard link that publishes
+# the output fails, then the removal of the staging folder fails too.
+mkdir shut
+cp original.mov shut/clip.mov
+env STUB=lockdir
+exits 1 ncly video convert shut/clip.mov
+stderr '"code":"RUNTIME","message":"The converted output could not be prepared or published: link [^"]*: permission denied"'
+stderr '"code":"RUNTIME","message":"The converted output could not be prepared or published: unlinkat [^"]*\.ncly-video-convert-[^"]*: permission denied"'
+chmod 755 shut
+! exists shut/clip.converted.mp4
+env STUB=
 
 # Missing HandBrake fails both execution and dry run with the prerequisite code.
 mv bin/HandBrakeCLI bin/hidden-HandBrakeCLI
@@ -235,6 +269,7 @@ if [ -n "$scan" ]; then
   if [ "$STUB" = scanfail ]; then echo 'scan failed' >&2; exit 3; fi
   if [ "$STUB" = slowscan ]; then sleep 1; fi
   if [ "$STUB" = slowprep ]; then sleep 0.6; fi
+  if [ "$STUB" = hangscan ]; then exec sleep 30; fi
   if grep -qx 'not a video' "$input"; then echo 'No title found.' >&2; exit 2; fi
   if [ "$STUB" = notitles ]; then echo 'Version: {}'; exit 0; fi
   if [ "$STUB" = noduration ]; then echo 'JSON Title Set: {"TitleList":[{"AudioList":[]}]}'; exit 0; fi
@@ -253,5 +288,6 @@ case "$STUB" in
   missing) exit 0 ;;
   empty) : > "$output"; exit 0 ;;
   hang|slowscan) echo partial > "$output"; exec sleep 30 ;;
+  lockdir) echo encoded > "$output"; chmod 555 "${input%/*}"; exit 0 ;;
 esac
 echo encoded > "$output"
