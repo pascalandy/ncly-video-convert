@@ -1,26 +1,44 @@
-# Signals traverse the real host, extension, and runner in both phases.
-# The driver returns the host's exact exit and checks files and stub PIDs.
+# The kit signals the real host and validates its exit, answer, and surviving files.
+# survives snapshots at the marker, so cmp also compares with the untouched fixtures.
 chmod 755 bin/HandBrakeCLI
-env NCLY_NO_INPUT=1
-env NCLY_JSON=1
-env QA_INPUT=clip.mov
 
 # spec: interrupted
-exits 130 sh bin/drive-signal INT scan
-stderr '"code":"INTERRUPTED"'
+env QA_PHASE=scan
+env QA_MARKER=started-INT-scan
+survives clip.mov clip.converted.mp4
+signal INT $QA_MARKER ncly video convert clip.mov --force --dry-run
 ! stdout .
+cmp clip.mov clip.mov.before
+cmp clip.converted.mp4 previous.mp4
+exec sh bin/assert-invariants
+
 # spec: terminated
-exits 143 sh bin/drive-signal TERM scan
-stderr '"code":"TERMINATED"'
+env QA_MARKER=started-TERM-scan
+survives clip.mov clip.converted.mp4
+signal TERM $QA_MARKER ncly video convert clip.mov --force --dry-run
 ! stdout .
+cmp clip.mov clip.mov.before
+cmp clip.converted.mp4 previous.mp4
+exec sh bin/assert-invariants
+
 # spec: interrupted
-exits 130 sh bin/drive-signal INT encode new.mov
-stderr '"code":"INTERRUPTED"'
+env QA_PHASE=encode
+env QA_MARKER=started-INT-encode
+survives new.mov
+signal INT $QA_MARKER ncly video convert new.mov
 ! stdout .
+cmp new.mov new.mov.before
+! exists new.converted.mp4
+exec sh bin/assert-invariants
+
 # spec: terminated
-exits 143 sh bin/drive-signal TERM encode
-stderr '"code":"TERMINATED"'
+env QA_MARKER=started-TERM-encode
+survives clip.mov clip.converted.mp4
+signal TERM $QA_MARKER ncly video convert clip.mov --force
 ! stdout .
+cmp clip.mov clip.mov.before
+cmp clip.converted.mp4 previous.mp4
+exec sh bin/assert-invariants
 
 -- clip.mov --
 original
@@ -59,12 +77,6 @@ exec sleep 30
 -- bin/assert-invariants --
 #!/bin/sh
 set -eu
-cmp "$QA_INPUT" "$QA_INPUT.before"
-if [ "$QA_INPUT" = new.mov ]; then
-  test ! -e new.converted.mp4
-else
-  cmp "${QA_INPUT%.*}.converted.mp4" previous.mp4
-fi
 for p in .ncly-video-convert-*; do
   test ! -e "$p" && test ! -L "$p" || exit 91
 done
@@ -76,37 +88,3 @@ if [ -f stub.pids ]; then
     fi
   done < stub.pids
 fi
--- bin/drive-signal --
-#!/bin/sh
-set -eu
-signal=$1
-phase=$2
-export QA_INPUT="${3:-clip.mov}"
-export QA_PHASE="$phase" QA_MARKER="started-$signal-$phase"
-if [ "$phase" = scan ]; then
-  ncly video convert "$QA_INPUT" --force --dry-run > host.stdout 2> host.stderr &
-elif [ "$QA_INPUT" = new.mov ]; then
-  ncly video convert "$QA_INPUT" > host.stdout 2> host.stderr &
-else
-  ncly video convert "$QA_INPUT" --force > host.stdout 2> host.stderr &
-fi
-host=$!
-trap 'kill -TERM "$host" 2>/dev/null || true' EXIT
-i=0
-until [ -f "$QA_MARKER" ]; do
-  i=$((i+1))
-  if [ "$i" -ge 200 ]; then
-    echo 'stub never reached requested phase' >&2
-    exit 93
-  fi
-  sleep 0.05
-done
-kill -"$signal" "$host"
-status=0
-wait "$host" || status=$?
-cat host.stdout
-cat host.stderr >&2
-sh bin/assert-invariants
-printf '%s\n' "$status" > host.exit
-trap - EXIT
-exit "$status"

@@ -70,7 +70,8 @@ env GPU=
 
 # Only h264 and h265 are codecs.
 # spec: bad-codec
-exits 2 ncly video convert plain.mov --codec av1 --force
+protect plain.mov plain.converted.mp4
+refuses USAGE_INVALID ncly video convert plain.mov --codec av1 --force
 stderr '"code":"USAGE_INVALID"'
 
 -- plain.mov --

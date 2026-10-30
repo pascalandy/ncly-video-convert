@@ -52,6 +52,14 @@ properties = { dry_run = { const = true }, input = { type = "string" }, output =
 code = "VIDEO_CONVERT_UNREADABLE"
 exit = 2
 
+[[warnings]]
+code = "VIDEO_CONVERT_GPU_FAILED"
+modes = ["run"]
+
+[[warnings]]
+code = "VIDEO_CONVERT_GPU_RUNTIME_MISSING"
+untested = "Requires Linux Intel DRM hardware and controlled HandBrake help. Portable scenario gap: https://github.com/pascalandy/ncly-video-convert/issues/14"
+
 [programs.HandBrakeCLI]
 install = { brew = ["brew", "install", "handbrake"], pacman = ["sudo", "pacman", "-S", "handbrake-cli"], apt = ["sudo", "apt", "install", "handbrake-cli"], dnf = ["sudo", "dnf", "install", "HandBrake-cli"] }
 

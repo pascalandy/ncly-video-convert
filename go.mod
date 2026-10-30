@@ -5,7 +5,7 @@ go 1.27.0
 tool github.com/pascalandy/nicely/cmd/ncly
 
 require (
-	github.com/pascalandy/nicely v0.23.2
+	github.com/pascalandy/nicely v0.23.4
 	golang.org/x/sys v0.48.0
 )
 
@@ -43,6 +43,7 @@ require (
 	github.com/mitchellh/hashstructure/v2 v2.0.2 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/nicksnyder/go-i18n/v2 v2.6.1 // indirect
+	github.com/pelletier/go-toml/v2 v2.4.3 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.16.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3 // indirect

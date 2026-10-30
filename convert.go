@@ -476,8 +476,6 @@ func (j *job) publish(staged string, normalized bool) contract.Outcome {
 	}}
 }
 
-// warn adds a warning with the extension's prefix, which needs no entry in
-// the manifest.
 func (j *job) warn(code, message, hint string, data map[string]any) {
 	j.warnings = append(j.warnings, contract.Problem{
 		Code:    contract.Code("VIDEO_CONVERT_" + code),

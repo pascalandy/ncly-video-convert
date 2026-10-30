@@ -7,13 +7,8 @@ env NCLY_JSON=1
 env QA_INPUT=truncated.mov
 exec sh -c 'printf "\000\000\000\024ftypqt  \000\000\000\000qt  \000\000\000\010wide\013\233\074\354mdat\000\000\000\126\116\001\005\112\107\126\112\334\134\114\103\077\224\357\305\021\074\321\103\250\000\000\003\000" > truncated.mov'
 cp truncated.mov truncated.mov.before
-exits 2 ncly video convert truncated.mov --force --dry-run
-stderr '"code":"VIDEO_CONVERT_UNREADABLE"'
-stderr '"message":"[^"]*truncated\.mov'
-stderr '"hint":"[^"]*truncated\.mov'
-! stdout .
-exec sh bin/assert-invariants
-exits 2 ncly video convert truncated.mov --force
+protect truncated.mov truncated.converted.mp4
+refuses VIDEO_CONVERT_UNREADABLE ncly video convert truncated.mov --force
 stderr '"code":"VIDEO_CONVERT_UNREADABLE"'
 stderr '"message":"[^"]*truncated\.mov'
 stderr '"hint":"[^"]*truncated\.mov'

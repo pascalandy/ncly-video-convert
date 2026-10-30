@@ -76,10 +76,8 @@ exec sh -c 'for t in grep; do ln -s "$(command -v $t)" tools/$t; done'
 mv bin/ffmpeg bin/hidden-ffmpeg
 env PATH=$WORK/bin:$WORK/tools
 rm encoded.log
-exits 78 ncly video convert late.mov --dry-run
-stderr '"code":"PREREQ_MISSING"'
-stderr 'ffmpeg'
-exits 78 ncly video convert late.mov
+protect late.mov late.converted.mp4
+refuses PREREQ_MISSING ncly video convert late.mov
 stderr '"code":"PREREQ_MISSING"'
 ! exists encoded.log
 ! exists late.converted.mp4

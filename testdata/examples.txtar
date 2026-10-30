@@ -1,0 +1,13 @@
+# Each manifest example previews a video with audio and both CPU codecs.
+fake HandBrakeCLI
+fake ffmpeg
+
+-- clip.mov --
+example video
+-- bin/HandBrakeCLI.fake --
+stdout    x264
+stdout    x265_10bit
+stdout JSON Title Set: {"TitleList":[{"AudioList":[{}],"Duration":{"Ticks":360000},"FrameRate":{"Num":25,"Den":1}}]}
+exit 0
+-- bin/ffmpeg.fake --
+exit 0

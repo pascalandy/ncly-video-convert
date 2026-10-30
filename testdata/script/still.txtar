@@ -8,29 +8,24 @@ env NCLY_JSON=1
 
 # A title of 0 ticks, as HandBrake reads a PNG, is a still image.
 # spec: still-image
-exits 2 ncly video convert still.png --dry-run
-stderr '"code":"VIDEO_CONVERT_UNREADABLE"'
-stderr '"message":"[^"]*still\.png is a still image, not a video\.'
-stderr '"hint":"[^"]*still\.png'
-exits 2 ncly video convert still.png
+protect still.png still.converted.mp4
+refuses VIDEO_CONVERT_UNREADABLE ncly video convert still.png
 stderr '"code":"VIDEO_CONVERT_UNREADABLE"'
 stderr '"message":"[^"]*still\.png is a still image, not a video\.'
 stderr '"hint":"[^"]*still\.png'
 
 # A title of one frame at 25 fps, as HandBrake reads a JPEG, is a still image.
 # spec: still-image
-exits 2 ncly video convert photo.jpg --dry-run
-stderr '"code":"VIDEO_CONVERT_UNREADABLE"'
-stderr '"message":"[^"]*photo\.jpg is a still image, not a video\.'
-stderr '"hint":"[^"]*photo\.jpg'
-exits 2 ncly video convert photo.jpg
+protect photo.jpg photo.converted.mp4
+refuses VIDEO_CONVERT_UNREADABLE ncly video convert photo.jpg
 stderr '"code":"VIDEO_CONVERT_UNREADABLE"'
 stderr '"message":"[^"]*photo\.jpg is a still image, not a video\.'
 stderr '"hint":"[^"]*photo\.jpg'
 
 # Without a positive frame rate, a title of 0 ticks is a still image too.
 # spec: still-image
-exits 2 ncly video convert norate.png
+protect norate.png norate.converted.mp4
+refuses VIDEO_CONVERT_UNREADABLE ncly video convert norate.png
 stderr '"code":"VIDEO_CONVERT_UNREADABLE"'
 ! exists encoded.log
 ! exists still.converted.mp4

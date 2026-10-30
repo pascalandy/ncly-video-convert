@@ -7,13 +7,8 @@ env NCLY_JSON=1
 env QA_INPUT=empty.mov
 exec sh -c ': > empty.mov'
 cp empty.mov empty.mov.before
-exits 2 ncly video convert empty.mov --force --dry-run
-stderr '"code":"VIDEO_CONVERT_UNREADABLE"'
-stderr '"message":"[^"]*empty\.mov'
-stderr '"hint":"[^"]*empty\.mov'
-! stdout .
-exec sh bin/assert-invariants
-exits 2 ncly video convert empty.mov --force
+protect empty.mov empty.converted.mp4
+refuses VIDEO_CONVERT_UNREADABLE ncly video convert empty.mov --force
 stderr '"code":"VIDEO_CONVERT_UNREADABLE"'
 stderr '"message":"[^"]*empty\.mov'
 stderr '"hint":"[^"]*empty\.mov'
