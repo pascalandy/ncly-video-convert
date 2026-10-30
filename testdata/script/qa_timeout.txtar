@@ -4,16 +4,11 @@ chmod 755 bin/HandBrakeCLI
 env NCLY_NO_INPUT=1
 env NCLY_JSON=1
 env QA_INPUT=clip.mov
-exits 2 ncly video convert clip.mov --force --timeout 0 --dry-run
+protect clip.mov clip.converted.mp4
+refuses USAGE_INVALID ncly video convert clip.mov --force --timeout 0
 stderr '"code":"USAGE_INVALID"'
 exec sh bin/assert-invariants
-exits 2 ncly video convert clip.mov --force --timeout 0
-stderr '"code":"USAGE_INVALID"'
-exec sh bin/assert-invariants
-exits 2 ncly video convert clip.mov --force --timeout -1s --dry-run
-stderr '"code":"USAGE_INVALID"'
-exec sh bin/assert-invariants
-exits 2 ncly video convert clip.mov --force --timeout -1s
+refuses USAGE_INVALID ncly video convert clip.mov --force --timeout -1s
 stderr '"code":"USAGE_INVALID"'
 exec sh bin/assert-invariants
 ! exists stub.pids

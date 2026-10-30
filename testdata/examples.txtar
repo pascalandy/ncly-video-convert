@@ -1,10 +1,13 @@
-# Use the scenarios' Python wrapper with the manifest's sample input.
-chmod 755 bin/python3
+# Each manifest example previews a video with audio and both CPU codecs.
+fake HandBrakeCLI
+fake ffmpeg
 
--- notes.md --
-# Notes
-First line
-Last line
--- bin/python3 --
-#!/bin/sh
-exec /usr/bin/python3 "$@"
+-- clip.mov --
+example video
+-- bin/HandBrakeCLI.fake --
+stdout    x264
+stdout    x265_10bit
+stdout JSON Title Set: {"TitleList":[{"AudioList":[{}],"Duration":{"Ticks":360000},"FrameRate":{"Num":25,"Den":1}}]}
+exit 0
+-- bin/ffmpeg.fake --
+exit 0

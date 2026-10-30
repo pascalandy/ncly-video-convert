@@ -17,11 +17,8 @@ stdout '"normalize":false'
 # A file in which HandBrake finds no video fails both modes before any encode,
 # and its message and hint name the file, since a repeat cannot fix it.
 # spec: no-video-title
-exits 2 ncly video convert faux.mp4 --dry-run
-stderr '"code":"VIDEO_CONVERT_UNREADABLE"'
-stderr '"message":"[^"]*faux\.mp4'
-stderr '"hint":"[^"]*faux\.mp4'
-exits 2 ncly video convert faux.mp4
+protect faux.mp4 faux.converted.mp4
+refuses VIDEO_CONVERT_UNREADABLE ncly video convert faux.mp4
 stderr '"code":"VIDEO_CONVERT_UNREADABLE"'
 stderr '"message":"[^"]*faux\.mp4'
 stderr '"hint":"[^"]*faux\.mp4'
@@ -34,18 +31,17 @@ exec sh -c 'for p in .ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
 # title has no duration, which tells a video from a still image.
 # spec: scan-failed
 env STUB=scanfail
-exits 1 ncly video convert 'clips/one clip.mov'
+protect 'clips/one clip.mov' 'clips/one clip.converted.mp4'
+refuses RUNTIME ncly video convert 'clips/one clip.mov'
 stderr '"code":"RUNTIME"'
 ! exists encoded.log
 ! exists 'clips/one clip.converted.mp4'
 env STUB=notitles
-exits 1 ncly video convert 'clips/one clip.mov' --dry-run
+refuses RUNTIME ncly video convert 'clips/one clip.mov'
 stderr '"code":"RUNTIME"'
 ! exists encoded.log
 env STUB=noduration
-exits 1 ncly video convert 'clips/one clip.mov' --dry-run
-stderr '"code":"RUNTIME"'
-exits 1 ncly video convert 'clips/one clip.mov'
+refuses RUNTIME ncly video convert 'clips/one clip.mov'
 stderr '"code":"RUNTIME"'
 ! exists encoded.log
 ! exists 'clips/one clip.converted.mp4'
@@ -60,12 +56,11 @@ stdout '"normalized":false'
 cmp 'clips/one clip.converted.mp4' expected.mp4
 cmp 'clips/one clip.mov' original.mov
 # spec: output-exists
-exits 2 ncly video convert 'clips/one clip.mov'
+protect 'clips/one clip.mov' 'clips/one clip.converted.mp4'
+refuses CONFIRMATION_REQUIRED ncly video convert 'clips/one clip.mov'
 stderr '"code":"CONFIRMATION_REQUIRED"'
 cmp 'clips/one clip.converted.mp4' expected.mp4
 cp precious.mp4 'clips/one clip.converted.mp4'
-exits 2 ncly video convert 'clips/one clip.mov' --dry-run
-stderr '"code":"CONFIRMATION_REQUIRED"'
 ncly video convert 'clips/one clip.mov' --force --dry-run
 stdout '"overwrite":true'
 cmp 'clips/one clip.converted.mp4' precious.mp4
@@ -136,10 +131,9 @@ stderr '"message":"HandBrakeCLI did not finish within 1 s, so it was stopped\.'
 # spec: scan-failed
 rm encoded.log
 env STUB=hangscan
-exits 1 ncly video convert slow.mov --dry-run --timeout 1s
-stderr '"code":"RUNTIME"'
+protect slow.mov slow.converted.mp4
+refuses RUNTIME ncly video convert slow.mov --timeout 1s
 stderr '"message":"HandBrakeCLI did not finish within 1 s, so it was stopped\.'
-exits 1 ncly video convert slow.mov --timeout 1s
 stderr '"code":"RUNTIME"'
 ! exists encoded.log
 ! exists slow.converted.mp4
@@ -148,45 +142,44 @@ exec sh -c 'for p in .ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
 # Invalid input, timeout and unsafe output are rejected before encoding.
 env STUB=
 # spec: bad-input
-exits 2 ncly video convert absent.mov
+protect absent.mov absent.converted.mp4
+refuses USAGE_INVALID ncly video convert absent.mov
 stderr '"code":"USAGE_INVALID"'
-exits 2 ncly video convert absent.mov --dry-run
-stderr '"code":"USAGE_INVALID"'
-exits 2 ncly video convert clips
+protect clips
+refuses USAGE_INVALID ncly video convert clips
 stderr '"code":"USAGE_INVALID"'
 rm encoded.log
 cp original.mov secret.mov
 chmod 000 secret.mov
-exits 2 ncly video convert secret.mov --dry-run
-stderr '"code":"USAGE_INVALID"'
-exits 2 ncly video convert secret.mov
+# The kit cannot read a mode-000 input. Compare it after restoring access.
+protect secret.converted.mp4
+refuses USAGE_INVALID ncly video convert secret.mov
 stderr '"code":"USAGE_INVALID"'
 chmod 644 secret.mov
+cmp secret.mov original.mov
 ! exists encoded.log
 # spec: bad-timeout
-exits 2 ncly video convert missing.mov --timeout soon
-stderr '"code":"USAGE_INVALID"'
-exits 2 ncly video convert missing.mov --timeout soon --dry-run
+protect missing.mov missing.converted.mp4
+refuses USAGE_INVALID ncly video convert missing.mov --timeout soon
 stderr '"code":"USAGE_INVALID"'
 # spec: unsafe-output
 symlink linked.converted.mp4 -> linked.mov
-exits 2 ncly video convert linked.mov --dry-run
+protect linked.mov linked.converted.mp4
+refuses USAGE_INVALID ncly video convert linked.mov
 stderr '"code":"USAGE_INVALID"'
-exits 2 ncly video convert linked.mov
-stderr '"code":"USAGE_INVALID"'
-exits 2 ncly video convert linked.mov --force --dry-run
-stderr '"code":"USAGE_INVALID"'
-exits 2 ncly video convert linked.mov --force
+refuses USAGE_INVALID ncly video convert linked.mov --force
 stderr '"code":"USAGE_INVALID"'
 cmp linked.mov original.mov
 exec sh -c 'test -L linked.converted.mp4 && test "$(readlink linked.converted.mp4)" = linked.mov'
 exec sh -c 'for p in .ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
 exec ln hardlinked.mov hardlinked.converted.mp4
-exits 2 ncly video convert hardlinked.mov --force
+protect hardlinked.mov hardlinked.converted.mp4
+refuses USAGE_INVALID ncly video convert hardlinked.mov --force
 stderr '"code":"USAGE_INVALID"'
 cmp hardlinked.mov original.mov
 mkdir directory.converted.mp4
-exits 2 ncly video convert directory.mov --force
+protect directory.mov directory.converted.mp4
+refuses USAGE_INVALID ncly video convert directory.mov --force
 stderr '"code":"USAGE_INVALID"'
 
 # The file system resolves ".." after a symlink, so alias/../clip.mov names
@@ -216,10 +209,8 @@ mkdir locked
 cp original.mov locked/clip.mov
 cp precious.mp4 locked/clip.converted.mp4
 chmod 555 locked
-exits 1 ncly video convert locked/clip.mov --force --dry-run
-stderr '"code":"RUNTIME"'
-stderr '"message":"[^"]*permission denied'
-exits 1 ncly video convert locked/clip.mov --force
+protect locked
+refuses RUNTIME ncly video convert locked/clip.mov --force
 stderr '"code":"RUNTIME"'
 stderr '"message":"[^"]*permission denied'
 cmp locked/clip.mov original.mov
@@ -232,9 +223,8 @@ chmod 755 locked
 mkdir dropbox
 cp original.mov dropbox/clip.mov
 chmod 333 dropbox
-exits 1 ncly video convert dropbox/clip.mov --dry-run
-stderr '"code":"RUNTIME"'
-exits 1 ncly video convert dropbox/clip.mov
+protect dropbox/clip.mov dropbox/clip.converted.mp4
+refuses RUNTIME ncly video convert dropbox/clip.mov
 stderr '"code":"RUNTIME"'
 chmod 755 dropbox
 ! exists dropbox/clip.converted.mp4
@@ -258,9 +248,8 @@ env STUB=
 # spec: no-handbrake
 mv bin/HandBrakeCLI bin/hidden-HandBrakeCLI
 env PATH=$WORK/bin
-exits 78 ncly video convert missing.mov --dry-run
-stderr '"code":"PREREQ_MISSING"'
-exits 78 ncly video convert missing.mov
+protect missing.mov missing.converted.mp4
+refuses PREREQ_MISSING ncly video convert missing.mov
 stderr '"code":"PREREQ_MISSING"'
 
 -- clips/one clip.mov --
