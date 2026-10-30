@@ -1,4 +1,5 @@
 # The kit signals the real host and validates its exit, answer, and surviving files.
+# survives snapshots at the marker, so cmp also compares with the untouched fixtures.
 chmod 755 bin/HandBrakeCLI
 
 # spec: interrupted
@@ -7,6 +8,8 @@ env QA_MARKER=started-INT-scan
 survives clip.mov clip.converted.mp4
 signal INT $QA_MARKER ncly video convert clip.mov --force --dry-run
 ! stdout .
+cmp clip.mov clip.mov.before
+cmp clip.converted.mp4 previous.mp4
 exec sh bin/assert-invariants
 
 # spec: terminated
@@ -14,6 +17,8 @@ env QA_MARKER=started-TERM-scan
 survives clip.mov clip.converted.mp4
 signal TERM $QA_MARKER ncly video convert clip.mov --force --dry-run
 ! stdout .
+cmp clip.mov clip.mov.before
+cmp clip.converted.mp4 previous.mp4
 exec sh bin/assert-invariants
 
 # spec: interrupted
@@ -22,6 +27,7 @@ env QA_MARKER=started-INT-encode
 survives new.mov
 signal INT $QA_MARKER ncly video convert new.mov
 ! stdout .
+cmp new.mov new.mov.before
 ! exists new.converted.mp4
 exec sh bin/assert-invariants
 
@@ -30,13 +36,21 @@ env QA_MARKER=started-TERM-encode
 survives clip.mov clip.converted.mp4
 signal TERM $QA_MARKER ncly video convert clip.mov --force
 ! stdout .
+cmp clip.mov clip.mov.before
+cmp clip.converted.mp4 previous.mp4
 exec sh bin/assert-invariants
 
 -- clip.mov --
 original
+-- clip.mov.before --
+original
 -- new.mov --
 original
+-- new.mov.before --
+original
 -- clip.converted.mp4 --
+previous
+-- previous.mp4 --
 previous
 -- bin/HandBrakeCLI --
 #!/bin/sh
