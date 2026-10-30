@@ -28,22 +28,24 @@ This file answers one question: what does the UAT of `ncly video convert` add to
 
 ## Error cases
 
-The `spec.md` column names the line of [spec.md](spec.md) that holds the expected code, in `## Failures` or in `## Acceptance`. A case that succeeds has none. The Expected column holds only what that line does not say.
+These scenarios run in every `just check`.
+The `spec.md` column names the criterion that holds the expected code.
+The Expected column adds the other assertions.
 
-| Case | spec.md | Expected, as a dry run and as a run |
-|---|---|---|
-| Fake file, empty file, or truncated video | `no-video-title` | Nothing more |
-| Missing path | `bad-input` | Exit 2 |
-| Invalid `--timeout`, such as `soon`, `0`, or `-1s` | `bad-timeout` | Exit 2. A bare number, such as `3`, counts as seconds |
-| `--timeout` that ends during the encode, such as `3s` for a 1-minute 1080p clip | `encode-failed` | The run exits 1, and the message names the given timeout. The dry run exits 0, unless the scan takes longer than the timeout, such as with `1ms` |
-| Existing output, without `--force` | `output-exists` | Exit 2 |
-| Existing output, with `--force` | None | Exit 0. The dry run answers `"overwrite":true`, and the run replaces the output |
-| Output folder in read-only mode | `folder-access` | Exit 1, and the message says "permission denied" |
-| Input that is a symbolic link | None | Exit 0. The output goes beside the link, with the name of the link |
-| Output that is a symbolic link, with or without `--force` | `unsafe-output` | Exit 2 |
-| Ctrl-C during the scan of the dry run or during the encode | `interrupted` | Exit 130 |
-| SIGTERM to `ncly` during the scan of the dry run or during the encode | `terminated` | Exit 143 |
-| Still image, such as a PNG or a JPEG | `still-image` | The message and hint name the file |
+| Case | spec.md | Expected, as a dry run and as a run | Scenarios |
+|---|---|---|---|
+| Fake file, empty file, or truncated video | `no-video-title` | The message and hint name the file | [Fake](testdata/script/convert.txtar), [empty](testdata/script/qa_empty.txtar), [truncated](testdata/script/qa_truncated.txtar) |
+| Missing path | `bad-input` | Exit 2 | [convert](testdata/script/convert.txtar) |
+| Invalid `--timeout`, such as `soon`, `0`, or `-1s` | `bad-timeout` | Exit 2. A bare number, such as `3`, counts as seconds | [Invalid text](testdata/script/convert.txtar), [numeric values](testdata/script/qa_timeout.txtar) |
+| Timeout during the encode | `encode-failed` | The run exits 1 and names the given timeout. The dry run succeeds unless preparation exceeds the timeout | [Scan and encode](testdata/script/convert.txtar), [bare seconds](testdata/script/qa_timeout.txtar) |
+| Existing output, without `--force` | `output-exists` | Exit 2 | [convert](testdata/script/convert.txtar) |
+| Existing output, with `--force` | None | Exit 0. The dry run answers `"overwrite":true`. The run replaces the output | [convert](testdata/script/convert.txtar) |
+| Output folder in read-only mode | `folder-access` | Exit 1. The message says "permission denied" | [convert](testdata/script/convert.txtar) |
+| Input that is a symbolic link | None | Exit 0. The output goes beside the link, with the name of the link | [convert](testdata/script/convert.txtar) |
+| Output that is a symbolic link, with or without `--force` | `unsafe-output` | Exit 2. The link and its target stay the same | [convert](testdata/script/convert.txtar) |
+| Ctrl-C during the preview scan or the encode | `interrupted` | Exit 130 | [signals](testdata/script/signals.txtar) |
+| SIGTERM to `ncly` during the preview scan or the encode | `terminated` | Exit 143 | [signals](testdata/script/signals.txtar) |
+| Still image, such as a PNG or a JPEG | `still-image` | The message and hint name the file | [still](testdata/script/still.txtar) |
 
 After each of these cases, the input, any previous output, and the target of a link stay the same. No `.ncly-video-convert-*` staging folder and no HandBrakeCLI process stay.
 

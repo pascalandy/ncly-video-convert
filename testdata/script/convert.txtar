@@ -63,8 +63,16 @@ cmp 'clips/one clip.mov' original.mov
 exits 2 ncly video convert 'clips/one clip.mov'
 stderr '"code":"CONFIRMATION_REQUIRED"'
 cmp 'clips/one clip.converted.mp4' expected.mp4
+cp precious.mp4 'clips/one clip.converted.mp4'
+exits 2 ncly video convert 'clips/one clip.mov' --dry-run
+stderr '"code":"CONFIRMATION_REQUIRED"'
+ncly video convert 'clips/one clip.mov' --force --dry-run
+stdout '"overwrite":true'
+cmp 'clips/one clip.converted.mp4' precious.mp4
+cmp 'clips/one clip.mov' original.mov
 ncly-video-convert 'clips/one clip.mov' --force
 stdout '"size_bytes":8'
+cmp 'clips/one clip.converted.mp4' expected.mp4
 
 # Failure after writing partial data preserves the previous complete output.
 # An encode that exits 2 stays RUNTIME, unlike a scan that exits 2.
@@ -142,6 +150,8 @@ env STUB=
 # spec: bad-input
 exits 2 ncly video convert absent.mov
 stderr '"code":"USAGE_INVALID"'
+exits 2 ncly video convert absent.mov --dry-run
+stderr '"code":"USAGE_INVALID"'
 exits 2 ncly video convert clips
 stderr '"code":"USAGE_INVALID"'
 rm encoded.log
@@ -156,11 +166,21 @@ chmod 644 secret.mov
 # spec: bad-timeout
 exits 2 ncly video convert missing.mov --timeout soon
 stderr '"code":"USAGE_INVALID"'
+exits 2 ncly video convert missing.mov --timeout soon --dry-run
+stderr '"code":"USAGE_INVALID"'
 # spec: unsafe-output
 symlink linked.converted.mp4 -> linked.mov
+exits 2 ncly video convert linked.mov --dry-run
+stderr '"code":"USAGE_INVALID"'
+exits 2 ncly video convert linked.mov
+stderr '"code":"USAGE_INVALID"'
+exits 2 ncly video convert linked.mov --force --dry-run
+stderr '"code":"USAGE_INVALID"'
 exits 2 ncly video convert linked.mov --force
 stderr '"code":"USAGE_INVALID"'
 cmp linked.mov original.mov
+exec sh -c 'test -L linked.converted.mp4 && test "$(readlink linked.converted.mp4)" = linked.mov'
+exec sh -c 'for p in .ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
 exec ln hardlinked.mov hardlinked.converted.mp4
 exits 2 ncly video convert hardlinked.mov --force
 stderr '"code":"USAGE_INVALID"'
@@ -180,16 +200,30 @@ stdout '"input":".*/trap/actual/clip.mov"'
 cmp trap/clip.converted.mp4 precious.mp4
 cmp trap/actual/clip.converted.mp4 expected.mp4
 
+# An input symlink keeps its name in the output and preserves its target.
+symlink shortcut.mov -> original.mov
+ncly video convert shortcut.mov --dry-run
+stdout '"output":"[^"]*/shortcut.converted.mp4"'
+! exists shortcut.converted.mp4
+ncly video convert shortcut.mov
+cmp shortcut.converted.mp4 expected.mp4
+cmp shortcut.mov original.mov
+exec sh -c 'test -L shortcut.mov && test "$(readlink shortcut.mov)" = original.mov'
+
 # A folder that execution cannot write fails the dry run with the same code.
 # spec: folder-access
 mkdir locked
 cp original.mov locked/clip.mov
+cp precious.mp4 locked/clip.converted.mp4
 chmod 555 locked
-exits 1 ncly video convert locked/clip.mov --dry-run
+exits 1 ncly video convert locked/clip.mov --force --dry-run
 stderr '"code":"RUNTIME"'
+stderr '"message":"[^"]*permission denied'
 exits 1 ncly video convert locked/clip.mov --force
 stderr '"code":"RUNTIME"'
-! exists locked/clip.converted.mp4
+stderr '"message":"[^"]*permission denied'
+cmp locked/clip.mov original.mov
+cmp locked/clip.converted.mp4 precious.mp4
 chmod 755 locked
 
 # Cleanup reads the output's folder, so a folder that grants write and search

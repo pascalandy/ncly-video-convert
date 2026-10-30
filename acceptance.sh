@@ -77,6 +77,17 @@ probe() {
 duration() {
 	ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$1"
 }
+# Decode every frame and audio sample. A readable header cannot prove this.
+decoded() {
+	if ! ffmpeg -nostdin -v error -xerror -i "$1" -f null - 2>"$scratch/decode.stderr"; then
+		cat "$scratch/decode.stderr" >&2
+		die "ffmpeg cannot decode $1"
+	fi
+	if [[ -s "$scratch/decode.stderr" ]]; then
+		cat "$scratch/decode.stderr" >&2
+		die "ffmpeg reported errors in $1"
+	fi
+}
 # ssim prints the SSIM of one frame, at 1 s, of two videos as the screen shows them.
 ssim() {
 	ffmpeg -nostdin -ss 1 -i "$1" -ss 1 -i "$2" -lavfi \
@@ -99,7 +110,7 @@ heard() {
 	echo "$lufs LUFS and $peak dBTP"
 }
 
-ffmpeg -nostdin -v error -xerror -i "$output" -f null - || die "ffmpeg cannot decode $output"
+decoded "$output"
 [[ "$(probe v:0 stream=codec_name "$output")" == h264 ]] || die "the video of $output is not H.264"
 [[ "$(probe a:0 stream=codec_name "$output")" == aac ]] || die "$output has no AAC audio track"
 # The preset keeps a frame of up to 1920x1080 as the screen shows it.
@@ -150,6 +161,7 @@ fi
 	die "the h265 run failed: $(cat "$scratch/stderr")"
 grep -qF '"codec":"h265"' "$scratch/answer" || die "the h265 answer names another codec"
 encoder265="$(sed -n 's/.*"encoder":"\([^"]*\)".*/\1/p' "$scratch/answer")"
+decoded "$output"
 h265="$(probe v:0 stream=codec_name "$output") $(probe v:0 stream=profile "$output") $(probe v:0 stream=codec_tag_string "$output")"
 [[ "$h265" == "hevc Main 10 hvc1" ]] || die "the h265 output is $h265, want hevc Main 10 hvc1"
 h265_duration="$(duration "$output")"

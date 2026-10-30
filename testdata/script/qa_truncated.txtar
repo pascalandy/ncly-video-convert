@@ -1,0 +1,62 @@
+# A truncated MOV fails preview and execution before an encode.
+# The stub replays HandBrake's scan exit 2 for this input.
+# spec: no-video-title
+chmod 755 bin/HandBrakeCLI
+env NCLY_NO_INPUT=1
+env NCLY_JSON=1
+env QA_INPUT=truncated.mov
+exec sh -c 'printf "\000\000\000\024ftypqt  \000\000\000\000qt  \000\000\000\010wide\013\233\074\354mdat\000\000\000\126\116\001\005\112\107\126\112\334\134\114\103\077\224\357\305\021\074\321\103\250\000\000\003\000" > truncated.mov'
+cp truncated.mov truncated.mov.before
+exits 2 ncly video convert truncated.mov --force --dry-run
+stderr '"code":"VIDEO_CONVERT_UNREADABLE"'
+stderr '"message":"[^"]*truncated\.mov'
+stderr '"hint":"[^"]*truncated\.mov'
+! stdout .
+exec sh bin/assert-invariants
+exits 2 ncly video convert truncated.mov --force
+stderr '"code":"VIDEO_CONVERT_UNREADABLE"'
+stderr '"message":"[^"]*truncated\.mov'
+stderr '"hint":"[^"]*truncated\.mov'
+! stdout .
+exec sh bin/assert-invariants
+
+-- truncated.mov --
+ftypqt  truncated MOV header
+-- truncated.mov.before --
+ftypqt  truncated MOV header
+-- truncated.converted.mp4 --
+previous
+-- previous.mp4 --
+previous
+-- bin/HandBrakeCLI --
+#!/bin/sh
+set -eu
+printf '%s\n' "$$" >> "$WORK/stub.pids"
+for arg in "$@"; do
+  if [ "$arg" = --version ]; then
+    echo 'HandBrake 1.11.2'
+    exit 0
+  fi
+  if [ "$arg" = --scan ]; then
+    echo 'No title found.' >&2
+    exit 2
+  fi
+done
+echo 'unexpected call after the failed scan' >&2
+exit 9
+-- bin/assert-invariants --
+#!/bin/sh
+set -eu
+cmp "$QA_INPUT" "$QA_INPUT.before"
+cmp "${QA_INPUT%.*}.converted.mp4" previous.mp4
+for p in .ncly-video-convert-*; do
+  test ! -e "$p" && test ! -L "$p" || exit 91
+done
+if [ -f stub.pids ]; then
+  while read -r pid; do
+    if kill -0 "$pid" 2>/dev/null; then
+      echo "surviving stub PID $pid" >&2
+      exit 92
+    fi
+  done < stub.pids
+fi
