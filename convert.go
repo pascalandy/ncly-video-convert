@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"math/bits"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -150,20 +151,24 @@ func convert(ctx context.Context, call extension.Call) contract.Outcome {
 // prepared bounds each program of preparation, which ends in moments.
 const prepared = 10 * time.Second
 
-// scan asks HandBrake for the titles of the input, and reports whether the
-// first one has audio. The scan carries no --preset, since HandBrake also
-// exits 2 for an unknown preset, and the decoder would report that as an
-// unreadable input.
+// scan asks HandBrake for the titles of the input, refuses a still image, and
+// reports whether the first title has audio. The scan carries no --preset,
+// since HandBrake also exits 2 for an unknown preset, and the decoder would
+// report that as an unreadable input.
 func (j *job) scan(ctx context.Context, data map[string]any) (bool, contract.Outcome) {
 	var audio bool
 	call := j.call
 	outcome := j.step(ctx, wrap.Program{Name: "HandBrakeCLI", Args: []string{"--input", j.input, "--scan", "--json"}}, prepared, func(end wrap.Ended) contract.Outcome {
 		switch end.Exit {
 		case 0:
-			var ok bool
-			if audio, ok = hasAudio(end.Stdout); !ok {
+			first, ok := firstTitle(end.Stdout)
+			if !ok {
 				return end.Malformed()
 			}
+			if first.still() {
+				return conversionError(call, "VIDEO_CONVERT_UNREADABLE", "still_image", "still_image_hint", data)
+			}
+			audio = len(first.AudioList) != 0
 			return contract.Outcome{}
 		case 2:
 			return conversionError(call, "VIDEO_CONVERT_UNREADABLE", "unreadable", "unreadable_hint", data)
@@ -173,23 +178,41 @@ func (j *job) scan(ctx context.Context, data map[string]any) (bool, contract.Out
 	return audio, outcome
 }
 
-// hasAudio reads the title set that HandBrake prints after "JSON Title Set: "
-// on stdout, and reports whether its first title has an audio track. Its
-// second result is false when stdout holds no such title set.
-func hasAudio(stdout []byte) (bool, bool) {
+// A title is what the scan reports of one title of the input. Ticks count
+// 90 kHz, and the frame rate is Num/Den frames a second.
+type title struct {
+	AudioList []json.RawMessage
+	Duration  *struct{ Ticks uint64 }
+	FrameRate struct{ Num, Den int64 }
+}
+
+// firstTitle reads the title set that HandBrake prints after "JSON Title Set: "
+// on stdout, and returns its first title. Its second result is false when
+// stdout holds no such title set, or when that title has no duration.
+func firstTitle(stdout []byte) (title, bool) {
 	_, set, found := bytes.Cut(stdout, []byte("JSON Title Set: "))
 	if !found {
-		return false, false
+		return title{}, false
 	}
-	var titles struct {
-		TitleList []struct {
-			AudioList []json.RawMessage
-		}
+	var titles struct{ TitleList []title }
+	if err := json.NewDecoder(bytes.NewReader(set)).Decode(&titles); err != nil || len(titles.TitleList) == 0 || titles.TitleList[0].Duration == nil {
+		return title{}, false
 	}
-	if err := json.NewDecoder(bytes.NewReader(set)).Decode(&titles); err != nil || len(titles.TitleList) == 0 {
-		return false, false
+	return titles.TitleList[0], true
+}
+
+// still reports whether the title lasts one frame or less, as HandBrake reads
+// a still image: 0 ticks for a PNG, and one frame at 25 fps for a JPEG.
+// Without a positive frame rate, only a title of 0 ticks is still.
+func (t title) still() bool {
+	ticks, num, den := t.Duration.Ticks, t.FrameRate.Num, t.FrameRate.Den
+	if num <= 0 || den <= 0 {
+		return ticks == 0
 	}
-	return len(titles.TitleList[0].AudioList) != 0, true
+	// ticks/90000 <= den/num, in 128 bits so that no product overflows.
+	hi, lo := bits.Mul64(ticks, uint64(num))
+	frameHi, frameLo := bits.Mul64(90000, uint64(den))
+	return hi < frameHi || hi == frameHi && lo <= frameLo
 }
 
 // prepare picks the encoder, then checks ffmpeg when the job normalizes.

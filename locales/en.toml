@@ -38,6 +38,14 @@ other = "{{.File}} is not a readable video. HandBrake found no video title in it
 description = "Recovery hint for an input that is not a readable video. {{.File}} names the input."
 other = "Check that {{.File}} is a complete video file, or pass another video to ncly video convert."
 
+["video-convert.still_image"]
+description = "Usage error when HandBrake reads the input as a title of one frame or less, as it reads a still image, such as a PNG or a JPEG. {{.File}} names the input."
+other = "{{.File}} is a still image, not a video. HandBrake found a title of one frame or less in it."
+
+["video-convert.still_image_hint"]
+description = "Recovery hint for an input that is a still image. {{.File}} names the input."
+other = "Pass a video to ncly video convert, not the still image {{.File}}."
+
 ["video-convert.bad_timeout"]
 description = "Usage error for a nonpositive or malformed timeout."
 other = "The timeout must be a positive duration."

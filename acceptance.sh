@@ -109,11 +109,14 @@ got="$(probe v:0 stream=width "$output")x$(probe v:0 stream=height "$output")"
 if [[ "${size%x*}" -le 1920 && "${size#*x}" -le 1080 && "$got" != "$size" ]]; then
 	die "the frame of $output is $got, want $size"
 fi
+# spec: duration
 in_duration="$(duration "$input")" out_duration="$(duration "$output")"
 awk -v a="$in_duration" -v b="$out_duration" 'BEGIN { d = a - b; exit !(d <= 0.1 && d >= -0.1) }' ||
 	die "the duration of $output, $out_duration s, is not within 0.1 s of $in_duration s"
+# spec: orientation
 orientation="$(ssim "$input" "$output")"
 above "$orientation" 0.8 || die "$output does not show the input the same way up: SSIM $orientation, want 0.8 or more"
+# spec: loudness
 audio="$(heard "$output")"
 
 # A second run checks determinism, as the Determinism criterion of qa.md says.
@@ -142,6 +145,7 @@ else
 fi
 
 # --codec h265 gives H.265 Main 10, with the hvc1 tag that Apple's players need.
+# spec: hevc-output
 (cd "$work" && ncly "${command[@]}" "$input" --codec h265 --force --json --no-input) >"$scratch/answer" 2>"$scratch/stderr" ||
 	die "the h265 run failed: $(cat "$scratch/stderr")"
 grep -qF '"codec":"h265"' "$scratch/answer" || die "the h265 answer names another codec"
@@ -153,14 +157,24 @@ awk -v a="$in_duration" -v b="$h265_duration" 'BEGIN { d = a - b; exit !(d <= 0.
 	die "the duration of the h265 output, $h265_duration s, is not within 0.1 s of $in_duration s"
 audio265="$(heard "$output")"
 
-# The domain refuses a still image, which HandBrakeCLI accepts. Until
-# nicely#351 lands, the command accepts it too, and this check expects that.
-ffmpeg -nostdin -v error -f lavfi -i testsrc2=size=320x240 -frames:v 1 "$work/still.png"
-code=0
-(cd "$work" && ncly "${command[@]}" "$work/still.png" --json --no-input) >/dev/null 2>"$scratch/refusal" || code=$?
-if [[ "$code" == 2 ]] && grep -qF '"code":"VIDEO_CONVERT_UNREADABLE"' "$scratch/refusal"; then
-	die "the still image is refused now: require that refusal here, and close nicely#351"
-fi
-[[ "$code" == 0 ]] || die "$work/still.png: want exit 0 until nicely#351 lands, got exit $code: $(cat "$scratch/refusal")"
+# The domain refuses a still image, which HandBrakeCLI accepts: HandBrake
+# reads a PNG as a title of 0 ticks, and a JPEG as one frame at 25 fps.
+refused() {
+	local code=0
+	(cd "$work" && ncly "${command[@]}" "$@" --json --no-input) >/dev/null 2>"$scratch/refusal" || code=$?
+	if [[ "$code" != 2 ]] || ! grep -qF '"code":"VIDEO_CONVERT_UNREADABLE"' "$scratch/refusal"; then
+		die "ncly ${command[*]} $*: want exit 2 with VIDEO_CONVERT_UNREADABLE, got exit $code: $(cat "$scratch/refusal")"
+	fi
+}
+# spec: still-image
+for still in still.png still.jpg; do
+	ffmpeg -nostdin -v error -f lavfi -i testsrc2=size=320x240 -frames:v 1 "$work/$still"
+	refused "$work/$still" --dry-run
+	refused "$work/$still"
+	[[ ! -e "$work/still.converted.mp4" ]] || die "$work/$still gave the output $work/still.converted.mp4"
+	for stage in "$work"/.ncly-video-convert-*; do
+		[[ ! -e "$stage" ]] || die "$work/$still left the staging folder $stage"
+	done
+done
 
-echo "acceptance: ncly ${command[*]} passed on $input: H.264 with $encoder and AAC at $audio, $got, $out_duration s, orientation SSIM $orientation; two runs give $determinism; --codec h265 gives $h265 with $encoder265, $h265_duration s, AAC at $audio265; a still image is still accepted (nicely#351)"
+echo "acceptance: ncly ${command[*]} passed on $input: H.264 with $encoder and AAC at $audio, $got, $out_duration s, orientation SSIM $orientation; two runs give $determinism; --codec h265 gives $h265 with $encoder265, $h265_duration s, AAC at $audio265; a PNG and a JPEG are refused as still images"

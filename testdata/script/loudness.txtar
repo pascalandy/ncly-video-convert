@@ -48,6 +48,7 @@ rm ffmpeg.log
 
 # A first pass without its measures, or a failed second pass, fails the run
 # and keeps the previous output.
+# spec: normalize-failed
 env STUB=nomeasure
 exits 1 ncly video convert talk.mov --force
 stderr '"code":"RUNTIME"'
@@ -56,10 +57,20 @@ env STUB=ffmpegfail
 exits 1 ncly video convert talk.mov --force
 stderr '"code":"RUNTIME"'
 cmp talk.converted.mp4 normalized.mp4
+
+# A first pass that outlasts --timeout fails the run too, and the message
+# names the given timeout.
+# spec: normalize-failed
+env STUB=ffmpeghang
+exits 1 ncly video convert talk.mov --force --timeout 1s
+stderr '"code":"RUNTIME"'
+stderr '"message":"ffmpeg did not finish within 1 s, so it was stopped\.'
+cmp talk.converted.mp4 normalized.mp4
 exec sh -c 'for p in .ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
 env STUB=
 
 # Without ffmpeg, both modes fail before any encode, unless --no-normalize.
+# spec: no-ffmpeg
 mkdir tools
 exec sh -c 'for t in grep; do ln -s "$(command -v $t)" tools/$t; done'
 mv bin/ffmpeg bin/hidden-ffmpeg
@@ -103,7 +114,7 @@ done
 if [ -n "$scan" ]; then
   audio='[{"Description":"AAC"}]'
   if grep -qx 'no audio' "$input"; then audio='[]'; fi
-  echo "JSON Title Set: {\"TitleList\":[{\"AudioList\":$audio}]}"
+  echo "JSON Title Set: {\"TitleList\":[{\"AudioList\":$audio,\"Duration\":{\"Ticks\":360000},\"FrameRate\":{\"Num\":27000000,\"Den\":1080000}}]}"
   exit 0
 fi
 echo invoked >> "$WORK/encoded.log"
@@ -115,6 +126,7 @@ case "$*" in
   *-version*) echo 'ffmpeg version 9.0'; exit 0 ;;
   *print_format=json*)
     if [ "$STUB" = nomeasure ]; then exit 0; fi
+    if [ "$STUB" = ffmpeghang ]; then exec sleep 30; fi
     i=-23.70 offset=1.15
     if [ "$STUB" = silent ]; then i=-inf offset=inf; fi
     printf '[Parsed_loudnorm_0 @ 0x1] \n{\n\t"input_i" : "%s",\n\t"input_tp" : "-3.88",\n\t"input_lra" : "9.20",\n\t"input_thresh" : "-35.48",\n\t"output_i" : "-16.10",\n\t"output_tp" : "-1.50",\n\t"output_lra" : "6.30",\n\t"output_thresh" : "-28.88",\n\t"normalization_type" : "dynamic",\n\t"target_offset" : "%s"\n}\n' "$i" "$offset" >&2

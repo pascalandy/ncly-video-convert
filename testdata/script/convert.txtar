@@ -16,6 +16,7 @@ stdout '"normalize":false'
 
 # A file in which HandBrake finds no video fails both modes before any encode,
 # and its message and hint name the file, since a repeat cannot fix it.
+# spec: no-video-title
 exits 2 ncly video convert faux.mp4 --dry-run
 stderr '"code":"VIDEO_CONVERT_UNREADABLE"'
 stderr '"message":"[^"]*faux\.mp4'
@@ -29,7 +30,9 @@ stderr '"hint":"[^"]*faux\.mp4'
 exec sh -c 'for p in .ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
 
 # Only exit 2 of the scan maps to VIDEO_CONVERT_UNREADABLE. Another failed
-# scan stays RUNTIME, and so does a scan without a title set.
+# scan stays RUNTIME, and so does a scan without a title set, or whose first
+# title has no duration, which tells a video from a still image.
+# spec: scan-failed
 env STUB=scanfail
 exits 1 ncly video convert 'clips/one clip.mov'
 stderr '"code":"RUNTIME"'
@@ -39,6 +42,13 @@ env STUB=notitles
 exits 1 ncly video convert 'clips/one clip.mov' --dry-run
 stderr '"code":"RUNTIME"'
 ! exists encoded.log
+env STUB=noduration
+exits 1 ncly video convert 'clips/one clip.mov' --dry-run
+stderr '"code":"RUNTIME"'
+exits 1 ncly video convert 'clips/one clip.mov'
+stderr '"code":"RUNTIME"'
+! exists encoded.log
+! exists 'clips/one clip.converted.mp4'
 env STUB=
 
 # A successful process must create a nonempty output. Both transport paths work.
@@ -49,6 +59,7 @@ stdout '"encoder":"x264"'
 stdout '"normalized":false'
 cmp 'clips/one clip.converted.mp4' expected.mp4
 cmp 'clips/one clip.mov' original.mov
+# spec: output-exists
 exits 2 ncly video convert 'clips/one clip.mov'
 stderr '"code":"CONFIRMATION_REQUIRED"'
 cmp 'clips/one clip.converted.mp4' expected.mp4
@@ -57,6 +68,7 @@ stdout '"size_bytes":8'
 
 # Failure after writing partial data preserves the previous complete output.
 # An encode that exits 2 stays RUNTIME, unlike a scan that exits 2.
+# spec: encode-failed
 env STUB=fail
 exits 1 ncly video convert 'clips/one clip.mov' --force
 stderr '"code":"RUNTIME"'
@@ -64,6 +76,7 @@ cmp 'clips/one clip.converted.mp4' expected.mp4
 cmp 'clips/one clip.mov' original.mov
 
 # An output arriving between preparation and publication must not be replaced.
+# spec: output-arrives
 env STUB=race
 exits 2 ncly video convert race.mov
 stderr '"code":"CONFIRMATION_REQUIRED"'
@@ -77,6 +90,7 @@ stdout '"size_bytes":8'
 cmp chatty.converted.mp4 expected.mp4
 
 # A zero exit without a regular nonempty file is not success.
+# spec: encode-failed
 env STUB=missing
 exits 1 ncly video convert missing.mov
 stderr '"code":"RUNTIME"'
@@ -87,6 +101,7 @@ stderr '"code":"RUNTIME"'
 ! exists empty.converted.mp4
 
 # Timeout cleans partial data and never publishes it.
+# spec: encode-failed
 env STUB=hang
 exits 1 ncly video convert timeout.mov --timeout 100ms
 stderr '"code":"RUNTIME"'
@@ -109,14 +124,39 @@ exits 1 ncly video convert slow.mov --dry-run --timeout 1s
 stderr '"code":"RUNTIME"'
 stderr '"message":"HandBrakeCLI did not finish within 1 s, so it was stopped\.'
 
+# A scan that outlasts --timeout fails both modes before any encode.
+# spec: scan-failed
+rm encoded.log
+env STUB=hangscan
+exits 1 ncly video convert slow.mov --dry-run --timeout 1s
+stderr '"code":"RUNTIME"'
+stderr '"message":"HandBrakeCLI did not finish within 1 s, so it was stopped\.'
+exits 1 ncly video convert slow.mov --timeout 1s
+stderr '"code":"RUNTIME"'
+! exists encoded.log
+! exists slow.converted.mp4
+exec sh -c 'for p in .ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
+
 # Invalid input, timeout and unsafe output are rejected before encoding.
 env STUB=
+# spec: bad-input
 exits 2 ncly video convert absent.mov
 stderr '"code":"USAGE_INVALID"'
 exits 2 ncly video convert clips
 stderr '"code":"USAGE_INVALID"'
+rm encoded.log
+cp original.mov secret.mov
+chmod 000 secret.mov
+exits 2 ncly video convert secret.mov --dry-run
+stderr '"code":"USAGE_INVALID"'
+exits 2 ncly video convert secret.mov
+stderr '"code":"USAGE_INVALID"'
+chmod 644 secret.mov
+! exists encoded.log
+# spec: bad-timeout
 exits 2 ncly video convert missing.mov --timeout soon
 stderr '"code":"USAGE_INVALID"'
+# spec: unsafe-output
 symlink linked.converted.mp4 -> linked.mov
 exits 2 ncly video convert linked.mov --force
 stderr '"code":"USAGE_INVALID"'
@@ -141,6 +181,7 @@ cmp trap/clip.converted.mp4 precious.mp4
 cmp trap/actual/clip.converted.mp4 expected.mp4
 
 # A folder that execution cannot write fails the dry run with the same code.
+# spec: folder-access
 mkdir locked
 cp original.mov locked/clip.mov
 chmod 555 locked
@@ -153,6 +194,7 @@ chmod 755 locked
 
 # Cleanup reads the output's folder, so a folder that grants write and search
 # but not read fails both modes before encoding, and keeps no staging.
+# spec: folder-access
 mkdir dropbox
 cp original.mov dropbox/clip.mov
 chmod 333 dropbox
@@ -164,7 +206,22 @@ chmod 755 dropbox
 ! exists dropbox/clip.converted.mp4
 exec sh -c 'for p in dropbox/.ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
 
+# A failed publication fails the run, and so does a failed cleanup. The stub
+# encode makes the output's folder read-only, so the hard link that publishes
+# the output fails, then the removal of the staging folder fails too.
+# spec: publish-failed
+mkdir shut
+cp original.mov shut/clip.mov
+env STUB=lockdir
+exits 1 ncly video convert shut/clip.mov
+stderr '"code":"RUNTIME","message":"The converted output could not be prepared or published: link [^"]*: permission denied"'
+stderr '"code":"RUNTIME","message":"The converted output could not be prepared or published: unlinkat [^"]*\.ncly-video-convert-[^"]*: permission denied"'
+chmod 755 shut
+! exists shut/clip.converted.mp4
+env STUB=
+
 # Missing HandBrake fails both execution and dry run with the prerequisite code.
+# spec: no-handbrake
 mv bin/HandBrakeCLI bin/hidden-HandBrakeCLI
 env PATH=$WORK/bin
 exits 78 ncly video convert missing.mov --dry-run
@@ -227,10 +284,12 @@ if [ -n "$scan" ]; then
   if [ "$STUB" = scanfail ]; then echo 'scan failed' >&2; exit 3; fi
   if [ "$STUB" = slowscan ]; then sleep 1; fi
   if [ "$STUB" = slowprep ]; then sleep 0.6; fi
+  if [ "$STUB" = hangscan ]; then exec sleep 30; fi
   if grep -qx 'not a video' "$input"; then echo 'No title found.' >&2; exit 2; fi
   if [ "$STUB" = notitles ]; then echo 'Version: {}'; exit 0; fi
+  if [ "$STUB" = noduration ]; then echo 'JSON Title Set: {"TitleList":[{"AudioList":[]}]}'; exit 0; fi
   echo 'Version: {}'
-  echo 'JSON Title Set: {"TitleList":[{"AudioList":[]}]}'
+  echo 'JSON Title Set: {"TitleList":[{"AudioList":[],"Duration":{"Ticks":360000},"FrameRate":{"Num":27000000,"Den":1080000}}]}'
   exit 0
 fi
 if [ ! -f "$input" ] || [ "$preset" != 'Fast 1080p30' ] || [ "$format" != av_mp4 ]; then
@@ -244,5 +303,6 @@ case "$STUB" in
   missing) exit 0 ;;
   empty) : > "$output"; exit 0 ;;
   hang|slowscan) echo partial > "$output"; exec sleep 30 ;;
+  lockdir) echo encoded > "$output"; chmod 555 "${input%/*}"; exit 0 ;;
 esac
 echo encoded > "$output"
