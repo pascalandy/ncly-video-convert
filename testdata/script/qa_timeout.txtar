@@ -1,0 +1,73 @@
+# Zero and negative timeouts fail in both modes. A bare number means seconds.
+# spec: bad-timeout
+chmod 755 bin/HandBrakeCLI
+env NCLY_NO_INPUT=1
+env NCLY_JSON=1
+env QA_INPUT=clip.mov
+exits 2 ncly video convert clip.mov --force --timeout 0 --dry-run
+stderr '"code":"USAGE_INVALID"'
+exec sh bin/assert-invariants
+exits 2 ncly video convert clip.mov --force --timeout 0
+stderr '"code":"USAGE_INVALID"'
+exec sh bin/assert-invariants
+exits 2 ncly video convert clip.mov --force --timeout -1s --dry-run
+stderr '"code":"USAGE_INVALID"'
+exec sh bin/assert-invariants
+exits 2 ncly video convert clip.mov --force --timeout -1s
+stderr '"code":"USAGE_INVALID"'
+exec sh bin/assert-invariants
+! exists stub.pids
+
+# The 0.2 s scan fits within 3 seconds. The encode then exceeds that deadline.
+# spec: encode-failed
+ncly video convert clip.mov --force --timeout 3 --dry-run
+stdout '"dry_run":true'
+stdout '"overwrite":true'
+exec sh bin/assert-invariants
+exits 1 ncly video convert clip.mov --force --timeout 3
+stderr '"code":"RUNTIME"'
+stderr '"message":"HandBrakeCLI did not finish within 3 s, so it was stopped\.'
+exec sh bin/assert-invariants
+
+-- clip.mov --
+original
+-- clip.mov.before --
+original
+-- clip.converted.mp4 --
+previous
+-- previous.mp4 --
+previous
+-- bin/HandBrakeCLI --
+#!/bin/sh
+set -eu
+printf '%s\n' "$$" >> "$WORK/stub.pids"
+output=
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --help) printf '   x264\n'; exit 0 ;;
+    --output) output=$2; shift ;;
+    --scan)
+      sleep 0.2
+      echo 'JSON Title Set: {"TitleList":[{"AudioList":[],"Duration":{"Ticks":360000},"FrameRate":{"Num":25,"Den":1}}]}'
+      exit 0 ;;
+  esac
+  shift
+done
+echo partial > "$output"
+exec sleep 30
+-- bin/assert-invariants --
+#!/bin/sh
+set -eu
+cmp "$QA_INPUT" "$QA_INPUT.before"
+cmp "${QA_INPUT%.*}.converted.mp4" previous.mp4
+for p in .ncly-video-convert-*; do
+  test ! -e "$p" && test ! -L "$p" || exit 91
+done
+if [ -f stub.pids ]; then
+  while read -r pid; do
+    if kill -0 "$pid" 2>/dev/null; then
+      echo "surviving stub PID $pid" >&2
+      exit 92
+    fi
+  done < stub.pids
+fi
