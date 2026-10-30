@@ -9,54 +9,112 @@ Read `extension-identity.md` in the pinned contract for the slug and command own
 ## Read, in this order
 
 1. `vision.md`: the job of the extension, what it wraps, and what it refuses
-2. `spec.md`: what proves the success of each command, why each effect exists, and its failures
+2. `spec.md`, including `## Acceptance`: each command's success criteria, effects, and failures
 3. `qa.md`: how a user accepts the extension, with the UAT protocol of Nicely
 4. `manifest.toml`: the machine facts of each command, which `ncly describe video convert --json` shows once the extension is installed
 5. The contract, at the Nicely version that `go.mod` pins. `just contract` prints its folder. Start with "What a great extension does" in its `extensions.md`, and open only the parts that it links
 
 ## Change a command
 
-1. `spec.md`: its section, titled `## ncly <path>`, at the extension root or beneath it
-2. `manifest.toml`: its declaration, with its effects, programs, keys, and result schema
-3. `locales/en.toml`: its text, each entry with a description
-4. Add a placeholder handler that compiles, and register it in `extension.go`
-5. `testdata/script/`: its scenarios, which fail for the missing behavior. `test-kit.md` in the contract lists their commands. For a command with a dry run, give each refusal of the shared preparation a dry-run scenario with the same code
-6. Write the handler body, on `sdk/wrap` for one program, or on `sdk/runner` for more
-7. `skill/SKILL.md`: when to use the command, and when not to. For a command with a dry run, tell the agent to dry-run the call first
+1. Write the command's spec before its implementation.
+2. Prepare the manifest, catalog, and placeholder handler until `extension.Check` passes.
+3. Write a scenario that fails for the missing behavior.
+4. Write the handler body, on `sdk/wrap` for one program, or on `sdk/runner` for more.
+5. Teach when to use the command in `skill/SKILL.md`.
 
-`extension.Check` must pass before a scenario can fail for the missing behavior. Steps 1 through 4 prepare that check.
+Give each command one bounded job beneath the extension root.
+Never relay arbitrary arguments to a wrapped program.
+The skill teaches when to use the command, rather than its implementation.
+For a command with a dry run, tell the agent to dry-run the call first.
+
+In `acceptance.sh`, judge the result with a tool other than the extension.
+Use the real input and criteria of `## Acceptance`.
+For a paid command, run only its dry run.
 
 A wrapped script goes in `worker/`. To take in a script, or to review the extension when the user asks, use the skill in `.agents/skills/nicely-extension/`.
 
 `sdk/wrap` keeps 1 MB of stdout, and answers `RUNTIME` once a program writes more. A program that prints its progress on stdout, such as an encoder, can pass that limit in a long run. When the decoder reads no stdout, set `DiscardStdout: true` in `wrap.Program`. When it reads stdout, set an `OutputLimit` that the longest run cannot pass. Prove it with a scenario whose stub prints more than 1 MB on stdout, then exits 0.
 
+## Rule index
+
+The linked checks enforce these rules.
+The paragraphs above state the rules marked "Prose only".
+`test-kit.md` in the pinned contract gives scenario syntax and spec IDs.
+
+| Rule | Enforced by |
+|---|---|
+| Each running command executes in a scenario | [Kit executed calls][calls] |
+| Call only through `ncly`, `ncly-video-convert`, `exits`, `signal`, or `refuses` | [Kit call forms][links] |
+| Each manifest example runs | [Kit examples][examples] |
+| Declare each own error and warning code, with its commands and modes | [`extension.Check`][declarations] |
+| Observe each declared code in its scope, or supply an `untested` reason with an issue | [Kit code coverage][codes] |
+| A dry run and run refuse the same preparation failure on the same input | [Kit `refuses`][refuses] |
+| A signal case checks the exit, answer, and surviving files | [Kit `signal`][signal] |
+| Template and SDK versions move together through `just update` | [Kit version link][links] |
+| The skill names only declared commands | [Kit skill links][links] |
+| Sign off through `just signoff` and release through `just release vX.Y.Z` | [Signoff receipt][signoff], [release receipt][release] |
+| A copied recipe holds no script | [Core template test][template-test] |
+| `acceptance.sh` judges with another tool | Prose only; [release runs acceptance][release] |
+| One bounded job, no arbitrary argument relay; the skill teaches when | Prose only |
+| Spec first; a scenario fails before the handler body exists | Prose only |
+
+[calls]: https://github.com/pascalandy/nicely/blob/main/sdk/extensiontest/calls.go
+[links]: https://github.com/pascalandy/nicely/blob/main/sdk/extensiontest/links.go
+[examples]: https://github.com/pascalandy/nicely/blob/main/sdk/extensiontest/examples.go
+[declarations]: https://github.com/pascalandy/nicely/blob/main/sdk/extension/extension.go
+[codes]: https://github.com/pascalandy/nicely/blob/main/sdk/extensiontest/codes.go
+[refuses]: https://github.com/pascalandy/nicely/blob/main/sdk/extensiontest/paired.go
+[signal]: https://github.com/pascalandy/nicely/blob/main/sdk/extensiontest/signal.go
+[signoff]: https://github.com/pascalandy/nicely/blob/main/sdk/extensionrepo/signoff.go
+[release]: https://github.com/pascalandy/nicely/blob/main/sdk/extensionrepo/release.go
+[template-test]: https://github.com/pascalandy/nicely/blob/main/scripts/template-test.sh
+
 ## Recipes
 
-The recipes need Go, `just`, and `uv`, which runs the pinned Copier of `just update`. Scenarios use shell stubs of HandBrakeCLI and ffmpeg. A real conversion needs HandBrakeCLI on PATH, and ffmpeg too, unless it runs with `--no-normalize` or the input has no audio.
+The recipes need Go, `just`, and `uv`, which runs the pinned Copier of `just update`.
+Scenarios use shell stubs of HandBrakeCLI and ffmpeg.
+A real conversion needs HandBrakeCLI on PATH.
+It also needs ffmpeg unless `--no-normalize` is set or the input has no audio.
+Signoff also needs Git and `gh` with the `gh-signoff` extension.
 
 After Copier creates the repository, run `go mod tidy` once, which writes `go.sum` for the recipes. Then commit the repository with Git, since `just update` needs a clean Git tree. Run `lefthook install` once per clone, so `just check` runs before each push. GitHub runs it again for each push to `main` and each pull request.
 
 - `just check`: every check. It runs `go mod tidy -diff`, `gofmt`, `go vet`, and `go test`, whose test kit installs the extension into scratch folders
+- `just signoff`: checks the committed SHA in a detached scratch worktree, writes a receipt outside the repository, and signs that exact SHA
 - `just install`: installs the extension into Nicely's extensions folder, in place of its previous install
 - `just uninstall`: removes that install, and keeps its keys and grants
 - `just acceptance [fixture]`: runs `acceptance.sh`, which runs the command of `## Acceptance` as an agent would, in scratch folders. It works on a copy of the fixture, or on an input that it makes
-- `just update <version>`: moves the repository to another Nicely version, the template first and then the SDK, on a clean Git tree
+- `just update <version>`: runs the target version's updater on a clean Git tree, with the template before the SDK
 - `just contract`: prints the folder of the contract at the Nicely version that `go.mod` pins
+
+### Update an older repository
+
+For a repository whose update recipe holds a script, run the target updater directly.
+Replace VERSION with the target Nicely tag, such as `v0.24.0`:
+
+```sh
+go -C "$(go mod download -json github.com/pascalandy/nicely@VERSION | sed -n 's/^[[:space:]]*"Dir": "\(.*\)",$/\1/p')" run ./sdk/extensionrepo/cmd/extensionrepo update VERSION "$PWD"
+```
+
+The updater keeps your dependencies and reconciles Nicely's replacements in `go.mod`.
+On a Copier conflict, resolve each file and mark it with `git add`.
+Remove each `.rej` file, then run the printed bootstrap command with `--continue`.
+This finishes dependency updates and runs `just check`.
+"Update an extension" in `extension-repository.md` of the contract holds the recovery rules.
 
 ## Done when
 
-`just check` passes, and `just acceptance` passes on the real input of `## Acceptance`. For a paid command, its dry run is enough. For a command that needs a key, relay the grant hint to the human and wait.
+`just check` passes, and `just acceptance` passes on the real input of `## Acceptance`.
+For a command that needs a key, relay the grant hint to the human and wait.
 
 ## Release
 
-A user installs a fixed version from its tag, with the commands of `README.md`.
-A release is one Git tag `vX.Y.Z` of Semantic Versioning, such as `v0.1.0`.
-"Release and install" in the contract's `extensions.md` holds these rules.
-
 1. Commit every change
-2. Run `just check` on the clean Git tree
-3. Make sure that "Done when" holds for this commit
-4. Push the commit to the default branch of the remote repository
-5. Tag that commit, such as with `git tag v0.1.0`
-6. Push the tag, such as with `git push origin v0.1.0`
-7. Run the commands of `README.md` for the new tag in a new folder. `ncly describe video convert --json` must describe `video convert`
+2. Push that commit to a review branch
+3. Run `just signoff` for that pushed commit
+4. Make sure that "Done when" holds for this commit
+5. Merge that exact signed SHA into the default branch
+6. Run `just release vX.Y.Z`, with an optional fixture path
+7. Read the printed receipt for acceptance, the published install, Economy reservations, hosted checks, and uninstall
+
+For release recovery, read "Release and install" in the pinned contract's `extensions.md`.
