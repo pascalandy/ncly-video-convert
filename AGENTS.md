@@ -50,6 +50,7 @@ The paragraphs above state the rules marked "Prose only".
 | Observe each declared code in its scope, or supply an `untested` reason with an issue | [Kit code coverage][codes] |
 | A dry run and run refuse the same preparation failure on the same input | [Kit `refuses`][refuses] |
 | A signal case checks the exit, answer, and surviving files | [Kit `signal`][signal] |
+| Publication proof matches the current code, model, probe, and tool pins | `TestPublicationRecord`; read [verifying-video-publication](.agents/skills/verifying-video-publication/SKILL.md) when these change |
 | Template and SDK versions move together through `just update` | [Kit version link][links] |
 | The skill names only declared commands | [Kit skill links][links] |
 | Sign off through `just signoff` and release through `just release vX.Y.Z` | [Signoff receipt][signoff], [release receipt][release] |
@@ -80,6 +81,7 @@ Signoff also needs Git and `gh` with the `gh-signoff` extension.
 After Copier creates the repository, run `go mod tidy` once, which writes `go.sum` for the recipes. Then commit the repository with Git, since `just update` needs a clean Git tree. Run `lefthook install` once per clone, so `just check` runs before each push. GitHub runs it again for each push to `main` and each pull request.
 
 - `just check`: every check. It runs `go mod tidy -diff`, `gofmt`, `go vet`, and `go test`, whose test kit installs the extension into scratch folders
+- `just verify-publication`: bounded publication model, Linux signal probes, and negative controls; refreshes the record checked by `just check`
 - `just signoff`: checks the committed SHA in a detached scratch worktree, writes a receipt outside the repository, and signs that exact SHA
 - `just install`: installs the extension into Nicely's extensions folder, in place of its previous install
 - `just uninstall`: removes that install, and keeps its keys and grants
