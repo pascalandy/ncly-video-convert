@@ -1,0 +1,25 @@
+# HandBrake before 1.10 has no --no-metadata option. Its unknown-option
+# parser exits zero without writing output. The default policy must keep
+# working on that CLI rather than adding the optional stripping feature.
+chmod 755 bin/HandBrakeCLI
+# spec: handbrake-compat
+ncly video convert clip.mov --dry-run --no-normalize --json
+ncly video convert clip.mov --no-normalize --json
+cmp clip.converted.mp4 complete.mp4
+
+-- clip.mov --
+input
+-- complete.mp4 --
+complete
+-- bin/HandBrakeCLI --
+#!/bin/sh
+case "$*" in
+  *--scan*) printf 'JSON Title Set: {"TitleList":[{"Duration":{"Ticks":90000},"FrameRate":{"Num":30,"Den":1},"AudioList":[]}]}'; exit 0 ;;
+  *--help*) printf 'HandBrake 1.7.2\n   x264\n   x265_10bit\n'; exit 0 ;;
+  *--no-metadata*) printf 'unknown option (--no-metadata)\n' >&2; exit 0 ;;
+esac
+while [ "$#" -gt 0 ]; do
+  case "$1" in --output) shift; output=$1 ;; esac
+  shift
+done
+printf 'complete\n' > "$output"

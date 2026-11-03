@@ -34,4 +34,4 @@ It also excludes macOS execution, host signal forwarding, power-loss durability,
 SIGKILL, exceeded cleanup budgets, and filesystem refusal can leave staging
 Post-publication errors can accompany an output that already exists
 
-The first adoption build routes the same nine TLC outcomes through `sdk/verification`, with the stable TLC v1.7.4 pin used by Nicely. `verification/tlc-record.json` binds the model and suite; the publication record additionally binds the adapter, SDK signal implementation, probe and runner. The SDK omits nondeterministic counterexample graph counts; the Safety exploration still records its complete graph.
+The first adoption build routes the same nine TLC outcomes through `sdk/verification`, with the stable TLC v1.7.4 pin used by Nicely. `verification/tlc-record.json` binds the model and suite; the publication record keeps the three executable outcomes and additionally binds the adapter, SDK signal implementation, probe and runner. The SDK omits nondeterministic counterexample graph counts; the Safety exploration still records its complete graph.

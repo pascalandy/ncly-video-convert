@@ -54,6 +54,9 @@ else
 	ffmpeg -nostdin -v error -display_rotation 180 -i "$scratch/flat.mp4" -c copy -metadata creation_time=2026-01-01T00:00:00Z "$work/clip.mov"
 	input="$work/clip.mov"
 fi
+# spec: publication-pending
+(cd "$work" && ncly "${command[@]}" "$input" --dry-run --json --no-input) >"$scratch/plan" 2>"$scratch/stderr" || die "the dry run failed: $(cat "$scratch/stderr")"
+grep -qF '"publication.link"' "$scratch/plan" || die 'the dry run omitted publication.link from pending_checks'
 status=0
 (cd "$work" && ncly "${command[@]}" "$input" --json --no-input) >"$scratch/answer" 2>"$scratch/stderr" || status=$?
 cat "$scratch/answer"
@@ -76,6 +79,20 @@ probe() {
 }
 duration() {
 	ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$1"
+}
+# Read metadata with ffprobe; the default conversion intentionally keeps it.
+tag() {
+	ffprobe -v error -show_entries "format_tags=$1" -of default=noprint_wrappers=1:nokey=1 "$2"
+}
+metadata_retained() {
+	local source_key output_key value
+	for pair in artist:artist date:date com.apple.quicktime.make:make com.apple.quicktime.creationdate:date; do
+		source_key="${pair%%:*}" output_key="${pair#*:}"
+		value="$(tag "$source_key" "$input")"
+		if [[ -n "$value" && "$(tag "$output_key" "$1")" != "$value" ]]; then
+			die "the output did not retain the input metadata $source_key"
+		fi
+	done
 }
 # Decode every frame and audio sample. A readable header cannot prove this.
 decoded() {
@@ -129,6 +146,8 @@ orientation="$(ssim "$input" "$output")"
 above "$orientation" 0.8 || die "$output does not show the input the same way up: SSIM $orientation, want 0.8 or more"
 # spec: loudness
 audio="$(heard "$output")"
+# spec: metadata-retained
+metadata_retained "$output"
 
 # A second run checks determinism, as the Determinism criterion of qa.md says.
 mv "$output" "$work/first.mp4"
@@ -155,6 +174,9 @@ else
 	determinism="the same frames and audio, and a video SSIM of $runs"
 fi
 # --codec h265 gives H.265 Main 10, with the hvc1 tag that Apple's players need.
+# spec: publication-pending
+(cd "$work" && ncly "${command[@]}" "$input" --codec h265 --force --dry-run --json --no-input) >"$scratch/plan" 2>"$scratch/stderr" || die "the h265 dry run failed"
+grep -qF '"publication.rename"' "$scratch/plan" || die 'the force dry run omitted publication.rename from pending_checks'
 # spec: hevc-output
 (cd "$work" && ncly "${command[@]}" "$input" --codec h265 --force --json --no-input) >"$scratch/answer" 2>"$scratch/stderr" ||
 	die "the h265 run failed: $(cat "$scratch/stderr")"
@@ -167,6 +189,7 @@ h265_duration="$(duration "$output")"
 awk -v a="$in_duration" -v b="$h265_duration" 'BEGIN { d = a - b; exit !(d <= 0.1 && d >= -0.1) }' ||
 	die "the duration of the h265 output, $h265_duration s, is not within 0.1 s of $in_duration s"
 audio265="$(heard "$output")"
+metadata_retained "$output"
 
 # The domain refuses a still image, which HandBrakeCLI accepts: HandBrake
 # reads a PNG as a title of 0 ticks, and a JPEG as one frame at 25 fps.

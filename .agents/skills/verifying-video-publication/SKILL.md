@@ -43,6 +43,6 @@ Copy this checklist and track completion:
 The normal gate needs no Java
 It rejects absent records and changes to covered source, SDK files, model, configurations, probe, runner, or tool pins
 The record hashes the current bytes, including uncommitted changes
-Its source commit identifies the reviewed base, while its hashes identify the verified tree
+Its `base_commit` identifies the reviewed base, while its hashes identify the verified tree
 
 For drift that skipped verification, use `/maintain-formal-verification-skill` to reconcile the model and code

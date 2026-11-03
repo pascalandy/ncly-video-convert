@@ -55,14 +55,14 @@ func verify() error {
 	}
 	// The SDK owns TLC acquisition, digest checking, execution and parsing.
 	// The extension keeps the same nine configurations and executable probes.
-	results, err := verification.Run(verification.Options{Root: r.tree, Dir: scratch, Env: r.env})
+	_, err = verification.Run(verification.Options{Root: r.tree, Dir: scratch, Env: r.env})
 	if err != nil {
 		return err
 	}
 	if err := r.probe("probe", "^TestFVPublication", 0, ""); err != nil {
 		return err
 	}
-	results = append(results, publication.Result{Name: "probe"})
+	results := []publication.Result{{Name: "probe"}}
 	if err := r.mutation(); err != nil {
 		return err
 	}
@@ -78,8 +78,8 @@ func verify() error {
 		return err
 	}
 	record := publication.Record{
-		Version: 1, ConfirmedAt: time.Now().UTC().Format(time.RFC3339),
-		SourceCommit: strings.TrimSpace(string(head)), SDKVersion: sdkVersion, Inputs: inputs, Results: results,
+		Version: 2, ConfirmedAt: time.Now().UTC().Format(time.RFC3339),
+		BaseCommit: strings.TrimSpace(string(head)), SDKVersion: sdkVersion, Inputs: inputs, Results: results,
 	}
 	data, err := json.MarshalIndent(record, "", "  ")
 	if err != nil {

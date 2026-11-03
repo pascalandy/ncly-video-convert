@@ -18,28 +18,20 @@ import (
 const Directory = "verification/publication"
 const RecordPath = Directory + "/record.json"
 
-// Checks retains both broken variants and counterexamples to stronger claims.
-var Checks = []struct{ Name, Violation string }{
-	{"Safety", ""},
-	{"Partial", "CompletePublic"},
-	{"Replace", "Consent"},
-	{"Input", "InputPreserved"},
-	{"Signal", "SignalMeansNoCommit"},
-	{"SignalBeforeCommit", "NoCanceledCommit"},
-	{"SignalAfterCommit", "SignalMeansNoCommit"},
-	{"Kill", "NoStageAfterExit"},
-	{"CleanupRefusal", "NoStageAfterExit"},
+// Result is one executable publication probe or control. The SDK's separate
+// TLC record owns all nine model outcomes.
+type Result struct {
+	Name string `json:"name"`
+	Exit int    `json:"exit"`
 }
 
-type Result = verification.Result
-
 type Record struct {
-	Version      int               `json:"version"`
-	ConfirmedAt  string            `json:"confirmed_at"`
-	SourceCommit string            `json:"source_commit"`
-	SDKVersion   string            `json:"sdk_version"`
-	Inputs       map[string]string `json:"inputs"`
-	Results      []Result          `json:"results"`
+	Version     int               `json:"version"`
+	ConfirmedAt string            `json:"confirmed_at"`
+	BaseCommit  string            `json:"base_commit"`
+	SDKVersion  string            `json:"sdk_version"`
+	Inputs      map[string]string `json:"inputs"`
+	Results     []Result          `json:"results"`
 }
 
 type module struct {
@@ -140,7 +132,7 @@ func CheckRecord(root string) error {
 	if err := json.Unmarshal(data, &record); err != nil {
 		return fmt.Errorf("publication record invalid: %w; run `just verify-publication`", err)
 	}
-	if record.Version != 1 || record.SDKVersion != version || record.SourceCommit == "" || record.ConfirmedAt == "" {
+	if record.Version != 2 || record.SDKVersion != version || record.BaseCommit == "" || record.ConfirmedAt == "" {
 		return fmt.Errorf("publication record incomplete; run `just verify-publication`")
 	}
 	if !maps.Equal(record.Inputs, inputs) {
@@ -157,21 +149,11 @@ func CheckRecord(root string) error {
 		}
 		return fmt.Errorf("publication record stale for %s; run `just verify-publication`", strings.Join(slices.Sorted(maps.Keys(changed)), ", "))
 	}
-	if len(record.Results) != len(Checks)+3 {
-		return fmt.Errorf("publication proof results missing; run `just verify-publication`")
-	}
-	for i, check := range Checks {
-		result := record.Results[i]
-		exit := 0
-		if check.Violation != "" {
-			exit = 12
-		}
-		if result.Name != check.Name || result.Exit != exit || result.Violation != check.Violation || (check.Violation == "" && (result.Distinct == 0 || result.Depth == 0)) {
-			return fmt.Errorf("publication result %s invalid; run `just verify-publication`", check.Name)
-		}
+	if len(record.Results) != 3 {
+		return fmt.Errorf("publication executable results missing; run `just verify-publication`")
 	}
 	for i, want := range []Result{{Name: "probe"}, {Name: "mutation", Exit: 1}, {Name: "restored"}} {
-		if record.Results[len(Checks)+i] != want {
+		if record.Results[i] != want {
 			return fmt.Errorf("publication result %s invalid; run `just verify-publication`", want.Name)
 		}
 	}

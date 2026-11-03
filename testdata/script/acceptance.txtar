@@ -1,41 +1,77 @@
-# Made media has a nondefault display rotation and private author metadata.
-# ffprobe is independent of the adapter and of its wrapped programs.
+# Made media has a nondefault display rotation and descriptive metadata.
+# The accepted privacy limit retains author/date; ffprobe checks that behavior.
 exec ffmpeg -nostdin -v error -f lavfi -i testsrc2=size=160x96:rate=30 -f lavfi -i sine=frequency=440:sample_rate=48000 -t 4 -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest flat.mp4
-exec ffmpeg -nostdin -v error -display_rotation 90 -i flat.mp4 -c copy -metadata author='Ana Lima' -metadata creation_time=2026-01-01T00:00:00Z clip.mov
+exec ffmpeg -nostdin -v error -display_rotation 90 -i flat.mp4 -c copy -metadata author='Ana Lima' -metadata date=2026-01-01T00:00:00Z -metadata creation_time=2026-01-01T00:00:00Z clip.mov
 cp clip.mov bad.mp4
 
-# spec: orientation private-metadata
+# spec: orientation metadata-retained
 ncly video convert clip.mov --dry-run --json
 ncly video convert clip.mov --json
-reads -case 'Keeps data that a reader needs' -private 'Ana Lima' clip.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames -count_frames -of default=noprint_wrappers=1
-reads -case 'Keeps private data of the input' -private 'Ana Lima' clip.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames -count_frames -of default=noprint_wrappers=1
-reads -case 'Loses data that changes the meaning' clip.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames -count_frames -of default=noprint_wrappers=1
-reads -case 'Exists, without --force' clip.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames -count_frames -of default=noprint_wrappers=1
-reads -case 'Is a link to the input' clip.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames -count_frames -of default=noprint_wrappers=1
-reads -case 'Temporary file' clip.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames -count_frames -of default=noprint_wrappers=1
+reads -case 'Loses data that changes the meaning' clip.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames:stream_side_data=rotation -count_frames -of default=noprint_wrappers=1
+reads clip.converted.mp4 author-reference flat.mp4 ffprobe -v error -show_entries format_tags=artist -of default=noprint_wrappers=1:nokey=1
+reads clip.converted.mp4 date-reference flat.mp4 ffprobe -v error -show_entries format_tags=date -of default=noprint_wrappers=1:nokey=1
+cp clip.converted.mp4 preserved.mp4
 
-# Each property has its own independent reader and a bad variant that fails it.
+# The output exists before either mode. Both refuse and preserve its bytes.
+# spec: output-exists
+protect clip.mov clip.converted.mp4
+refuses CONFIRMATION_REQUIRED ncly video convert clip.mov
+reads -case 'Exists, without --force' clip.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames:stream_side_data=rotation -count_frames -of default=noprint_wrappers=1
+
+# A real output symlink points to the input before the refusal. The reader
+# sees the preserved original dimensions and its unapplied display matrix.
+# spec: unsafe-output
+cp clip.mov alias.mov
+symlink alias.converted.mp4 -> alias.mov
+protect alias.mov alias.converted.mp4
+refuses USAGE_INVALID ncly video convert alias.mov --force
+reads -case 'Is a link to the input' alias.converted.mp4 original-reference preserved.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames:stream_side_data=rotation -count_frames -of default=noprint_wrappers=1
+
+# A predictable temporary name is already a link to the protected input.
+# Exclusive random staging must ignore it, leave it unchanged and publish
+# a separately decoded complete output.
+cp clip.mov temporary.mov
+symlink temporary.converted.mp4.tmp -> temporary.mov
+protect temporary.mov temporary.converted.mp4.tmp
+ncly video convert temporary.mov --dry-run --json
+keeps 0 ncly video convert temporary.mov --json
+reads -case 'Temporary file' temporary.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames:stream_side_data=rotation -count_frames -of default=noprint_wrappers=1
+
+# Each property has a reader and a bad variant that fails that property.
 # spec: duration
 exec ffmpeg -nostdin -v error -i clip.mov -t 1 -c copy bad-duration.mp4
 reads clip.converted.mp4 duration-reference bad-duration.mp4 sh duration.sh
 # spec: loudness
 reads clip.converted.mp4 loudness-reference clip.mov sh loudness.sh
 
-# The no-normalize path also removes private metadata, without ffmpeg.
+# The no-normalize path retains the same declared metadata behavior.
+# spec: metadata-retained
 ncly video convert clip.mov --no-normalize --force --dry-run --json
 ncly video convert clip.mov --no-normalize --force --json
-reads -private 'Ana Lima' clip.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames -count_frames -of default=noprint_wrappers=1
+reads clip.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames:stream_side_data=rotation -count_frames -of default=noprint_wrappers=1
+reads clip.converted.mp4 author-reference flat.mp4 ffprobe -v error -show_entries format_tags=artist -of default=noprint_wrappers=1:nokey=1
+reads clip.converted.mp4 date-reference flat.mp4 ffprobe -v error -show_entries format_tags=date -of default=noprint_wrappers=1:nokey=1
 
 # spec: hevc-output
 ncly video convert clip.mov --codec h265 --force --dry-run --json
 ncly video convert clip.mov --codec h265 --force --json
-reads clip.converted.mp4 hevc-reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,profile,codec_tag_string -of default=noprint_wrappers=1
+reads clip.converted.mp4 hevc-reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,profile,codec_tag_string:stream_side_data=rotation -of default=noprint_wrappers=1
 
 -- reference --
 codec_name=h264
 width=96
 height=160
 nb_read_frames=120
+-- original-reference --
+codec_name=h264
+width=160
+height=96
+nb_read_frames=120
+rotation=90
+-- author-reference --
+Ana Lima
+-- date-reference --
+2026-01-01T00:00:00Z
 -- hevc-reference --
 codec_name=hevc
 profile=Main 10
@@ -53,8 +89,7 @@ ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:no
 set -eu
 rate=$(ffprobe -v error -select_streams a:0 -show_entries stream=sample_rate -of default=noprint_wrappers=1:nokey=1 "$1")
 [ "$rate" = 48000 ]
-# ebur128 measures decoded samples independently of the handler's loudnorm
-# measurement and its JSON decoder. True peak is a linear amplitude here.
+# ebur128 measures decoded samples independently of the handler's loudnorm.
 ffprobe -v error -f lavfi -i "amovie=$1,ebur128=metadata=1:peak=true" -show_entries frame_tags=lavfi.r128.I,lavfi.r128.true_peak -of default=noprint_wrappers=1 | awk -F= '
 /\.I=/ { i=$2; seen=1 }
 /\.true_peak=/ { if ($2 > peak) peak=$2 }
