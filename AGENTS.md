@@ -44,7 +44,7 @@ A wrapped script goes in `worker/`.
 ## Recipes
 
 The recipes need Go, `just`, and `uv`, which runs the pinned Copier of `just update`.
-Scenarios use shell stubs of HandBrakeCLI and ffmpeg.
+Most scenarios use shell stubs of HandBrakeCLI and ffmpeg. The made-media acceptance scenario needs real HandBrakeCLI, ffmpeg and ffprobe.
 A real conversion needs HandBrakeCLI on PATH.
 It also needs ffmpeg unless `--no-normalize` is set or the input has no audio.
 Signoff also needs Git and `gh` with the `gh-signoff` extension.

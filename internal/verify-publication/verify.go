@@ -3,31 +3,26 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"io"
 	"maps"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/pascalandy/ncly-video-convert/internal/publication"
+	"github.com/pascalandy/nicely/sdk/extensionrepo"
+	"github.com/pascalandy/nicely/sdk/platform"
+	"github.com/pascalandy/nicely/sdk/verification"
 )
 
-type tools struct {
-	Java   string `json:"java"`
-	URL    string `json:"tlc_url"`
-	SHA256 string `json:"tlc_sha256"`
+type run struct {
+	root, scratch, tree string
+	env                 []string
 }
-
-type run struct{ root, scratch, tree string }
 
 func verify() error {
 	if runtime.GOOS != "linux" {
@@ -45,7 +40,11 @@ func verify() error {
 	if err != nil {
 		return err
 	}
-	r := run{root: root, scratch: scratch, tree: filepath.Join(scratch, "source")}
+	owned, err := extensionrepo.NewOwnedRun(scratch, extensionrepo.Profile{Set: map[string]string{"TMPDIR": scratch}})
+	if err != nil {
+		return err
+	}
+	r := run{root: root, scratch: scratch, tree: filepath.Join(scratch, "source"), env: owned.Env}
 	fmt.Fprintln(os.Stderr, "Publication logs:", scratch)
 	if err := r.copyTree(); err != nil {
 		return err
@@ -54,17 +53,11 @@ func verify() error {
 	if err != nil || !maps.Equal(inputs, snapshot) {
 		return fmt.Errorf("source changed during snapshot: %v; run `just verify-publication` again", err)
 	}
-	pins, err := r.setupTools()
+	// The SDK owns TLC acquisition, digest checking, execution and parsing.
+	// The extension keeps the same nine configurations and executable probes.
+	results, err := verification.Run(verification.Options{Root: r.tree, Dir: scratch, Env: r.env})
 	if err != nil {
 		return err
-	}
-	var results []publication.Result
-	for _, check := range publication.Checks {
-		result, err := r.model(pins, check.Name, check.Violation)
-		if err != nil {
-			return err
-		}
-		results = append(results, result)
 	}
 	if err := r.probe("probe", "^TestFVPublication", 0, ""); err != nil {
 		return err
@@ -92,20 +85,15 @@ func verify() error {
 	if err != nil {
 		return err
 	}
-	// Replace the old record only after every check and restoration succeeded.
-	path := filepath.Join(root, publication.RecordPath)
-	staged, err := os.CreateTemp(filepath.Dir(path), ".record-*")
+	modelRecord, err := os.ReadFile(filepath.Join(r.tree, verification.RecordFile))
 	if err != nil {
 		return err
 	}
-	if _, err := staged.Write(append(data, '\n')); err != nil {
-		_ = staged.Close()
+	if err := platform.WriteFile(filepath.Join(root, verification.RecordFile), modelRecord, 0o644); err != nil {
 		return err
 	}
-	if err := staged.Close(); err != nil {
-		return err
-	}
-	return os.Rename(staged.Name(), path)
+	// Replace the old record only after every check and restoration succeeded.
+	return platform.WriteFile(filepath.Join(root, publication.RecordPath), append(data, '\n'), 0o644)
 }
 
 func (r run) copyTree() error {
@@ -152,7 +140,7 @@ func (r run) command(label string, args ...string) (int, string, error) {
 	defer cancel()
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 	cmd.Dir = r.tree
-	cmd.Env = append(os.Environ(), "GOWORK=off", "GOFLAGS=", "JAVA_TOOL_OPTIONS=-Djava.io.tmpdir="+r.scratch)
+	cmd.Env = r.env
 	output, err := cmd.CombinedOutput()
 	path := filepath.Join(r.scratch, label+".log")
 	header, _ := json.Marshal(args)
@@ -168,68 +156,6 @@ func (r run) command(label string, args ...string) (int, string, error) {
 		}
 	}
 	return code, string(output), nil
-}
-
-func (r run) setupTools() (tools, error) {
-	var pins tools
-	data, err := os.ReadFile(filepath.Join(r.tree, publication.Directory, "tools.json"))
-	if err != nil {
-		return pins, err
-	}
-	if err := json.Unmarshal(data, &pins); err != nil {
-		return pins, err
-	}
-	client := http.Client{Timeout: 90 * time.Second}
-	response, err := client.Get(pins.URL)
-	if err != nil {
-		return pins, err
-	}
-	defer response.Body.Close()
-	if response.StatusCode != http.StatusOK {
-		return pins, fmt.Errorf("download TLC: HTTP %d; run `just verify-publication` again", response.StatusCode)
-	}
-	jar, err := io.ReadAll(io.LimitReader(response.Body, 64<<20))
-	if err != nil {
-		return pins, err
-	}
-	if fmt.Sprintf("%x", sha256.Sum256(jar)) != pins.SHA256 {
-		return pins, fmt.Errorf("TLC SHA-256 differs from tools.json; inspect the release before `just verify-publication`")
-	}
-	if err := os.WriteFile(filepath.Join(r.scratch, "tla2tools.jar"), jar, 0o600); err != nil {
-		return pins, err
-	}
-	// mise installs the exact managed Java version when it is not present.
-	code, _, err := r.command("java", "mise", "exec", pins.Java, "--", "java", "-version")
-	if err != nil || code != 0 {
-		return pins, fmt.Errorf("pinned Java setup failed: exit %d, %v; inspect %s/java.log and rerun `just verify-publication`", code, err, r.scratch)
-	}
-	return pins, nil
-}
-
-var states = regexp.MustCompile(`([\d,]+) distinct states found`)
-var depth = regexp.MustCompile(`depth of the complete state graph search is (\d+)`)
-
-func (r run) model(pins tools, name, violation string) (publication.Result, error) {
-	result := publication.Result{Name: name, Violation: violation}
-	code, output, err := r.command("tlc-"+name,
-		"mise", "exec", pins.Java, "--", "java", "-jar", filepath.Join(r.scratch, "tla2tools.jar"),
-		"-workers", "2", "-metadir", filepath.Join(r.scratch, "states-"+name),
-		"-config", filepath.Join(publication.Directory, name+".cfg"), filepath.Join(publication.Directory, "Publication.tla"))
-	if err != nil {
-		return result, err
-	}
-	want, message := 0, "Model checking completed. No error has been found."
-	if violation != "" {
-		want, message = 12, "Invariant "+violation+" is violated."
-	}
-	count, levels := states.FindStringSubmatch(output), depth.FindStringSubmatch(output)
-	if code != want || !strings.Contains(output, message) || len(count) != 2 || len(levels) != 2 {
-		return result, fmt.Errorf("TLC %s: exit %d, want %d with %q; inspect %s/tlc-%s.log and rerun `just verify-publication`", name, code, want, message, r.scratch, name)
-	}
-	result.Exit = code
-	result.Distinct, _ = strconv.Atoi(strings.ReplaceAll(count[1], ",", ""))
-	result.Depth, _ = strconv.Atoi(levels[1])
-	return result, nil
 }
 
 func (r run) probe(label, pattern string, want int, reason string) error {

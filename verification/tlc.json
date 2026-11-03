@@ -1,0 +1,60 @@
+{
+  "java": "java@temurin-21.0.13+9.0.LTS",
+  "tlc_url": "https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar",
+  "tlc_sha256": "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88",
+  "checks": [
+    {
+      "name": "Safety",
+      "model": "verification/publication/Publication.tla",
+      "config": "verification/publication/Safety.cfg"
+    },
+    {
+      "name": "Partial",
+      "model": "verification/publication/Publication.tla",
+      "config": "verification/publication/Partial.cfg",
+      "violation": "CompletePublic"
+    },
+    {
+      "name": "Replace",
+      "model": "verification/publication/Publication.tla",
+      "config": "verification/publication/Replace.cfg",
+      "violation": "Consent"
+    },
+    {
+      "name": "Input",
+      "model": "verification/publication/Publication.tla",
+      "config": "verification/publication/Input.cfg",
+      "violation": "InputPreserved"
+    },
+    {
+      "name": "Signal",
+      "model": "verification/publication/Publication.tla",
+      "config": "verification/publication/Signal.cfg",
+      "violation": "SignalMeansNoCommit"
+    },
+    {
+      "name": "SignalBeforeCommit",
+      "model": "verification/publication/Publication.tla",
+      "config": "verification/publication/SignalBeforeCommit.cfg",
+      "violation": "NoCanceledCommit"
+    },
+    {
+      "name": "SignalAfterCommit",
+      "model": "verification/publication/Publication.tla",
+      "config": "verification/publication/SignalAfterCommit.cfg",
+      "violation": "SignalMeansNoCommit"
+    },
+    {
+      "name": "Kill",
+      "model": "verification/publication/Publication.tla",
+      "config": "verification/publication/Kill.cfg",
+      "violation": "NoStageAfterExit"
+    },
+    {
+      "name": "CleanupRefusal",
+      "model": "verification/publication/Publication.tla",
+      "config": "verification/publication/CleanupRefusal.cfg",
+      "violation": "NoStageAfterExit"
+    }
+  ]
+}

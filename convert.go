@@ -132,11 +132,15 @@ func convert(ctx context.Context, call extension.Call) contract.Outcome {
 	}
 	data["Encoder"], data["Normalize"] = j.encoder.Name, j.normalize
 	if call.Flags["dry-run"] == "true" {
+		operation := "publication.link"
+		if force {
+			operation = "publication.rename"
+		}
 		_, _ = fmt.Fprintln(call.Stdout, call.Printer.T("video-convert.plan", data))
 		return contract.Outcome{Warnings: j.warnings, Data: map[string]any{
 			"dry_run": true, "input": input, "output": output, "preset": preset, "codec": codec,
 			"encoder": j.encoder.Name, "normalize": j.normalize, "overwrite": force,
-			"pending_checks": []string{"video_decode"},
+			"pending_checks": []string{"video_decode", operation},
 		}}
 	}
 	result := j.encode(ctx)
@@ -327,7 +331,7 @@ func (j *job) transcode(ctx context.Context, staged string) contract.Outcome {
 // HandBrake exited with an error, as opposed to a timeout or a signal.
 func (j *job) handBrake(ctx context.Context, staged string) (contract.Outcome, bool) {
 	var exited bool
-	args := append([]string{"--input", j.input, "--output", staged, "--preset", preset, "--format", "av_mp4", "--verbose=0"}, j.encoder.Args...)
+	args := append([]string{"--input", j.input, "--output", staged, "--preset", preset, "--format", "av_mp4", "--no-metadata", "--verbose=0"}, j.encoder.Args...)
 	outcome := j.step(ctx, wrap.Program{Name: "HandBrakeCLI", Args: args, DiscardStdout: true}, 0, func(end wrap.Ended) contract.Outcome {
 		if end.Exit != 0 {
 			exited = true

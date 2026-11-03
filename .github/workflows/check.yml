@@ -34,7 +34,12 @@ jobs:
         with:
           just-version: '1.58.0'
 
-      # Both runners ship /usr/bin/python3. Add a step for each other program that
-      # the scenarios run.
+      - name: Install media tools on Linux
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y handbrake-cli ffmpeg
+
+      - name: Install media tools on macOS
+        if: runner.os == 'macOS'
+        run: brew install handbrake ffmpeg
       - name: Run just check
         run: just check

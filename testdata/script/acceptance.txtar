@@ -14,6 +14,11 @@ reads -case 'Exists, without --force' clip.converted.mp4 reference bad.mp4 ffpro
 reads -case 'Is a link to the input' clip.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height -of default=noprint_wrappers=1
 reads -case 'Temporary file' clip.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height -of default=noprint_wrappers=1
 
+# The no-normalize path also removes private metadata, without ffmpeg.
+ncly video convert clip.mov --no-normalize --force --dry-run --json
+ncly video convert clip.mov --no-normalize --force --json
+reads -private 'Ana Lima' clip.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height -of default=noprint_wrappers=1
+
 # spec: hevc-output
 ncly video convert clip.mov --codec h265 --force --dry-run --json
 ncly video convert clip.mov --codec h265 --force --json

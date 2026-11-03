@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/pascalandy/nicely/sdk/verification"
 )
 
 const Directory = "verification/publication"
@@ -29,13 +31,7 @@ var Checks = []struct{ Name, Violation string }{
 	{"CleanupRefusal", "NoStageAfterExit"},
 }
 
-type Result struct {
-	Name      string `json:"name"`
-	Exit      int    `json:"exit"`
-	Violation string `json:"violation,omitempty"`
-	Distinct  int    `json:"distinct,omitempty"`
-	Depth     int    `json:"depth,omitempty"`
-}
+type Result = verification.Result
 
 type Record struct {
 	Version      int               `json:"version"`
@@ -61,7 +57,7 @@ func Inputs(root string) (map[string]string, string, error) {
 	inputs := map[string]string{"nicely/version": version}
 	for _, pattern := range []string{
 		"*.go", "cmd/ncly-video-convert/*.go", "manifest.toml", "locales/*.toml", "go.mod", "go.sum",
-		Directory + "/*.tla", Directory + "/*.cfg", Directory + "/tools.json",
+		Directory + "/*.tla", Directory + "/*.cfg", "verification/tlc.json",
 		"internal/publication/*.go", "internal/verify-publication/*.go", "justfile",
 	} {
 		paths, err := filepath.Glob(filepath.Join(root, pattern))
@@ -80,6 +76,7 @@ func Inputs(root string) (map[string]string, string, error) {
 	}
 	for _, name := range []string{
 		"go.mod", "sdk/extension/handle.go", "sdk/runner/signal.go", "sdk/contract/answer.go", "sdk/command/answer.go",
+		"sdk/verification/verification.go", "sdk/verification/tlc.go", "sdk/verification/record.go", "sdk/extensionrepo/owned_run.go",
 	} {
 		if err := hashFile(inputs, "nicely/"+name, filepath.Join(sdk.Dir, name)); err != nil {
 			return nil, "", err
@@ -128,6 +125,9 @@ func hashFile(inputs map[string]string, name, path string) error {
 
 // CheckRecord runs without Java. Any drift requires the complete proof again.
 func CheckRecord(root string) error {
+	if problems := verification.CheckRecord(root); len(problems) != 0 {
+		return fmt.Errorf("publication models: %s", strings.Join(problems, "; "))
+	}
 	inputs, version, err := Inputs(root)
 	if err != nil {
 		return fmt.Errorf("publication inputs: %w; run `just verify-publication`", err)
@@ -166,7 +166,7 @@ func CheckRecord(root string) error {
 		if check.Violation != "" {
 			exit = 12
 		}
-		if result.Name != check.Name || result.Exit != exit || result.Violation != check.Violation || result.Distinct == 0 || result.Depth == 0 {
+		if result.Name != check.Name || result.Exit != exit || result.Violation != check.Violation || (check.Violation == "" && (result.Distinct == 0 || result.Depth == 0)) {
 			return fmt.Errorf("publication result %s invalid; run `just verify-publication`", check.Name)
 		}
 	}
