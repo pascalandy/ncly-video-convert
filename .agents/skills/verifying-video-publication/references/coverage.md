@@ -1,16 +1,16 @@
 # Coverage record
 
-Correspondence was confirmed against ncly-video-convert `752ff5c8ede5d3fd990567674d32ca8e0d2a0ac5` and Nicely SDK `v0.23.4`
+Correspondence was confirmed against ncly-video-convert `db5f124e8033dfc2d3af2c77c592c36431817188` and Nicely SDK `v0.26.0`
 Advance these references only after reviewing the mapped operations
 `verification/publication/record.json` binds the exact source bytes and tool pins from the completed run
 `internal/publication/record.go` defines the complete input inventory
 
 | Source | Functions and boundary |
 |---|---|
-| `convert.go:282-309` | `job.encode`, private staging, context sampling, deferred cleanup |
-| `convert.go:328-341` | `job.handBrake`, worker return and staged file validation |
-| `convert.go:447-477` | `job.publish`, staged stat, destination check, atomic link or rename, published stat |
-| `convert.go:507-523` | `checkDestination`, alias and type refusal, overwrite consent |
+| `convert.go:286-313` | `job.encode`, private staging, context sampling, deferred cleanup |
+| `convert.go:332-345` | `job.handBrake`, worker return and staged file validation |
+| `convert.go:451-481` | `job.publish`, staged stat, destination check, atomic link or rename, published stat |
+| `convert.go:511-527` | `checkDestination`, alias and type refusal, overwrite consent |
 | SDK `sdk/runner/signal.go:45-59` | `ListenForSignals`, first signal cancels context |
 | SDK `sdk/extension/handle.go:48-81` | `loaded.handle`, handler completion, cleanup, cancellation sample |
 | SDK `sdk/contract/answer.go:101-107` | `Registry.Decide`, signal precedence |
@@ -33,3 +33,5 @@ It excludes normalization and GPU fallback internals, independent media decoding
 It also excludes macOS execution, host signal forwarding, power-loss durability, and fsync guarantees
 SIGKILL, exceeded cleanup budgets, and filesystem refusal can leave staging
 Post-publication errors can accompany an output that already exists
+
+The first adoption build routes the same nine TLC outcomes through `sdk/verification`, with the stable TLC v1.7.4 pin used by Nicely. `verification/tlc-record.json` binds the model and suite; the publication record additionally binds the adapter, SDK signal implementation, probe and runner. The SDK omits nondeterministic counterexample graph counts; the Safety exploration still records its complete graph.

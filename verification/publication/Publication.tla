@@ -25,14 +25,14 @@ Init ==
   /\ unauthorized = FALSE
   /\ cleanupRefused = [i \in Jobs |-> FALSE]
 
-(* V = ncly-video-convert at 752ff5c8; N = Nicely SDK at v0.23.4.
+(* V = ncly-video-convert at db5f124e; N = Nicely SDK at v0.26.0.
    Model program counters and ghost observations are not extra code effects.
    Syscalls are separate steps. No action combines a context check and commit.
    Jobs share the destination and preserved input, with private staging dirs.
    Both jobs enter after preparation; destination is checked again in publish.
    Worker writes are abstract final byte writes, not a claim about video decode. *)
 
-(* V/convert.go:283, one successful os.MkdirTemp. *)
+(* V/convert.go:287, one successful os.MkdirTemp. *)
 Mkdir(i) ==
   /\ pc[i] = "mkdir"
   /\ pc' = [pc EXCEPT ![i] = "write"]
@@ -40,7 +40,7 @@ Mkdir(i) ==
   /\ UNCHANGED <<force, signal, verdict, committed, public, input,
                  unauthorized, cleanupRefused>>
 
-(* V/convert.go:330-331 invokes worker; external worker's first staged write.
+(* V/convert.go:334-335 invokes worker; external worker's first staged write.
    Bug=partial represents changing that write's path to the public destination.
    Bug=input represents changing that write's path to the input. *)
 WorkerPartial(i) ==
@@ -51,7 +51,7 @@ WorkerPartial(i) ==
   /\ UNCHANGED <<pc, force, signal, verdict, committed, unauthorized,
                  cleanupRefused>>
 
-(* V/convert.go:331-339, worker's final write before successful return.
+(* V/convert.go:335-343, worker's final write before successful return.
    Worker success is a separate action, to allow signal/failure between them. *)
 WorkerComplete(i) ==
   /\ pc[i] = "write" /\ stage[i] = "partial"
@@ -59,21 +59,21 @@ WorkerComplete(i) ==
   /\ UNCHANGED <<pc, force, signal, verdict, committed, public, input,
                  unauthorized, cleanupRefused>>
 
-(* V/convert.go:331-339, successful program return observed by handBrake. *)
+(* V/convert.go:335-343, successful program return observed by handBrake. *)
 WorkerSuccess(i) ==
   /\ pc[i] = "write" /\ stage[i] = "complete"
   /\ pc' = [pc EXCEPT ![i] = "ctx"]
   /\ UNCHANGED <<stage, force, signal, verdict, committed, public, input,
                  unauthorized, cleanupRefused>>
 
-(* V/convert.go:295, final ctx.Err read on no-normalize path. *)
+(* V/convert.go:299, final ctx.Err read on no-normalize path. *)
 CheckContext(i) ==
   /\ pc[i] = "ctx"
   /\ pc' = [pc EXCEPT ![i] = IF signal[i] = 0 THEN "stageStat" ELSE "cleanup"]
   /\ UNCHANGED <<stage, force, signal, verdict, committed, public, input,
                  unauthorized, cleanupRefused>>
 
-(* V/convert.go:448-451, successful staged os.Lstat. The stage is private
+(* V/convert.go:452-455, successful staged os.Lstat. The stage is private
    and the worker has returned, so its completeness remains stable. *)
 StatStage(i) ==
   /\ pc[i] = "stageStat"
@@ -81,7 +81,7 @@ StatStage(i) ==
   /\ UNCHANGED <<stage, force, signal, verdict, committed, public, input,
                  unauthorized, cleanupRefused>>
 
-(* V/convert.go:453 and 507-523, destination os.Lstat snapshot. A second
+(* V/convert.go:457 and 511-527, destination os.Lstat snapshot. A second
    publisher can change the destination after this observation. *)
 CheckDestination(i) ==
   /\ pc[i] = "destStat"
@@ -90,7 +90,7 @@ CheckDestination(i) ==
   /\ UNCHANGED <<stage, force, signal, verdict, committed, public, input,
                  unauthorized, cleanupRefused>>
 
-(* V/convert.go:457, one successful rename when forced; 461, one hard link
+(* V/convert.go:461, one successful rename when forced; 465, one hard link
    when not forced. Bug=replace changes the latter syscall to rename. *)
 Commit(i) ==
   /\ pc[i] = "commit"
@@ -102,14 +102,14 @@ Commit(i) ==
   /\ stage' = [stage EXCEPT ![i] = IF force[i] THEN "empty" ELSE @]
   /\ UNCHANGED <<force, signal, verdict, input, cleanupRefused>>
 
-(* V/convert.go:461-465, os.Link atomically refuses the now-existing path. *)
+(* V/convert.go:465-469, os.Link atomically refuses the now-existing path. *)
 LinkExists(i) ==
   /\ pc[i] = "commit" /\ ~force[i] /\ public # "absent" /\ Bug # "replace"
   /\ pc' = [pc EXCEPT ![i] = "cleanup"]
   /\ UNCHANGED <<stage, force, signal, verdict, committed, public, input,
                  unauthorized, cleanupRefused>>
 
-(* V/convert.go:469-475, postcommit os.Stat. Even a failed stat cannot undo
+(* V/convert.go:473-479, postcommit os.Stat. Even a failed stat cannot undo
    publication. This action permits either post-stat outcome via Failure. *)
 StatPublished(i) ==
   /\ pc[i] = "postStat"
@@ -117,7 +117,7 @@ StatPublished(i) ==
   /\ UNCHANGED <<stage, force, signal, verdict, committed, public, input,
                  unauthorized, cleanupRefused>>
 
-(* V/convert.go:283-285, 295, 332-334, 448-451, 466-471. A failed syscall
+(* V/convert.go:287-289, 299, 336-338, 452-455, 470-475. A failed syscall
    or worker return transfers control to deferred cleanup, never rollback. *)
 Failure(i) ==
   /\ pc[i] \in {"mkdir", "write", "stageStat", "destStat", "commit", "postStat"}
@@ -125,7 +125,7 @@ Failure(i) ==
   /\ UNCHANGED <<stage, force, signal, verdict, committed, public, input,
                  unauthorized, cleanupRefused>>
 
-(* V/convert.go:288, successful RemoveAll's last removal or no-op.
+(* V/convert.go:292, successful RemoveAll's last removal or no-op.
    Earlier removals leave stage present and refine to stuttering. *)
 Cleanup(i) ==
   /\ pc[i] = "cleanup"
@@ -134,7 +134,7 @@ Cleanup(i) ==
   /\ UNCHANGED <<force, signal, verdict, committed, public, input,
                  unauthorized, cleanupRefused>>
 
-(* V/convert.go:288-291, RemoveAll failure retains staging. *)
+(* V/convert.go:292-295, RemoveAll failure retains staging. *)
 CleanupRefusal(i) ==
   /\ AllowCleanupRefusal /\ pc[i] = "cleanup" /\ stage[i] # "none"
   /\ pc' = [pc EXCEPT ![i] = "verdict"]

@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "java": "java@temurin-21.0.13+9.0.LTS",
+  "tlc_sha256": "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88",
+  "inputs": {
+    "verification/publication/CleanupRefusal.cfg": "82f594a6fce6a22848cc8a08a461febaafafe085ac55f0f66e53fca432e71bf0",
+    "verification/publication/Input.cfg": "7ccb26fd6c2a549e1e52bd69902cc6075a2f45a60f4bce1933ec748d05931fd2",
+    "verification/publication/Kill.cfg": "0d49708dcb103eaea11d05f632741ca4cbcfae748be9a4e46df4d84eec79c3d5",
+    "verification/publication/Partial.cfg": "bca3df6439adb85cdb8c1a3ce48ea00c97b190b4ebf87c600eedc3bb00a357cc",
+    "verification/publication/Publication.tla": "bfceb5ccc41beeae86117962b18eb801a74d829d5f6f2c54b1f7eb9187213eb2",
+    "verification/publication/Replace.cfg": "19614c1242c967fa6b551544d59d796c9c0d1729d46fbbac3ea51c31a27faa03",
+    "verification/publication/Safety.cfg": "015e80c5f1c8f419dc006ee53940c683ac90ad7acd9517f581757888a9c13280",
+    "verification/publication/Signal.cfg": "fa94fdf0345be86e03f45fa0f57f79bbc4482151bf52636c68c82994be2f01e8",
+    "verification/publication/SignalAfterCommit.cfg": "8d4f2c28471e874a5fae1ae3a8e5445bc764366100a699ce51c75af7706e3798",
+    "verification/publication/SignalBeforeCommit.cfg": "e5879499e0843b9e60113ad2683d3111125bf975166b8198807bf37e43a56480",
+    "verification/tlc.json": "06eab2f3af3a50e2883d9176a8b396faf776b95ac277e315ef399fb35b14dead"
+  },
+  "results": [
+    {
+      "name": "Safety",
+      "exit": 0,
+      "distinct": 21937,
+      "depth": 25
+    },
+    {
+      "name": "Partial",
+      "exit": 12,
+      "violation": "CompletePublic"
+    },
+    {
+      "name": "Replace",
+      "exit": 12,
+      "violation": "Consent"
+    },
+    {
+      "name": "Input",
+      "exit": 12,
+      "violation": "InputPreserved"
+    },
+    {
+      "name": "Signal",
+      "exit": 12,
+      "violation": "SignalMeansNoCommit"
+    },
+    {
+      "name": "SignalBeforeCommit",
+      "exit": 12,
+      "violation": "NoCanceledCommit"
+    },
+    {
+      "name": "SignalAfterCommit",
+      "exit": 12,
+      "violation": "SignalMeansNoCommit"
+    },
+    {
+      "name": "Kill",
+      "exit": 12,
+      "violation": "NoStageAfterExit"
+    },
+    {
+      "name": "CleanupRefusal",
+      "exit": 12,
+      "violation": "NoStageAfterExit"
+    }
+  ]
+}
