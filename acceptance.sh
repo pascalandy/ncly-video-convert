@@ -24,14 +24,14 @@ no_stage() {
 }
 
 expect_refusal() {
-	local code=$1 mode status
-	shift
-	local -a preview
+	local code=$1 source=$2 mode status
+	shift 2
+	local -a flags
 	for mode in preview run; do
-		preview=(--json --no-input)
-		if [[ "$mode" == preview ]]; then preview+=(--dry-run); fi
+		flags=(--json --no-input)
+		if [[ "$mode" == preview ]]; then flags+=(--dry-run); fi
 		status=0
-		(cd "$work" && ncly "${command[@]}" "$input" "$@" "${preview[@]}") >"$scratch/refused.out" 2>"$scratch/refused.err" || status=$?
+		(cd "$work" && ncly "${command[@]}" "$source" "$@" "${flags[@]}") >"$scratch/refused.out" 2>"$scratch/refused.err" || status=$?
 		[[ "$status" == 2 ]] || die "$mode expected $code, got exit $status: $(cat "$scratch/refused.err")"
 		grep -qF "\"code\":\"$code\"" "$scratch/refused.err" || die "$mode omitted $code"
 	done
@@ -110,11 +110,11 @@ probe() {
 duration() {
 	ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$1"
 }
-# Read metadata with ffprobe; the default conversion intentionally keeps it.
+# Read actual metadata with ffprobe; the command requests no removal.
 tag() {
 	ffprobe -v error -show_entries "format_tags=$1" -of default=noprint_wrappers=1:nokey=1 "$2"
 }
-metadata_retained() {
+metadata_retained_count() {
 	local source=$1 target=$2 source_key output_key value pair candidates=0 retained=0
 	for pair in artist:artist date:date com.apple.quicktime.make:make com.apple.quicktime.creationdate:date; do
 		source_key="${pair%%:*}" output_key="${pair#*:}"
@@ -126,21 +126,21 @@ metadata_retained() {
 			fi
 		fi
 	done
-	printf 'metadata: %s of %s known input values retained in %s\n' "$retained" "$candidates" "${target##*/}"
-	# Retention depends on the input and tool versions. A zero observation is
-	# allowed; a tagged control still has to demonstrate the declared possibility.
-	if [[ "$retained" -eq 0 ]]; then
-		local control="$work/metadata-control.mov" converted="$work/metadata-control.converted.mp4"
-		if [[ ! -f "$converted" ]]; then
-			ffmpeg -nostdin -v error -f lavfi -i testsrc2=size=160x96:rate=30 -f lavfi -i sine=frequency=440:sample_rate=48000 \
-				-t 2 -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest -metadata artist="Nicely metadata control" "$control"
-			(cd "$work" && ncly "${command[@]}" "$control" --dry-run --json --no-input) >"$scratch/metadata-plan" 2>"$scratch/metadata-stderr" || die 'metadata control dry run failed'
-			(cd "$work" && ncly "${command[@]}" "$control" --json --no-input) >"$scratch/metadata-answer" 2>"$scratch/metadata-stderr" || die "metadata control failed: $(cat "$scratch/metadata-stderr")"
-			grep -qF '"normalized":true' "$scratch/metadata-answer" || die 'metadata control did not exercise normalization'
-		fi
-		[[ "$(tag artist "$converted")" == 'Nicely metadata control' ]] || die 'controlled artist metadata was not retained'
-		echo 'metadata: controlled artist retention demonstrates that descriptive data can remain'
-	fi
+	printf 'metadata: %s of %s known input values retained in %s\n' "$retained" "$candidates" "${target##*/}" >&2
+	printf '%s\n' "$retained"
+}
+metadata_control() {
+	local control="$work/metadata-control.mov" converted="$work/metadata-control.converted.mp4"
+	ffmpeg -nostdin -v error -f lavfi -i testsrc2=size=160x96:rate=30 -f lavfi -i sine=frequency=440:sample_rate=48000 \
+		-t 2 -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest -metadata artist="Nicely metadata control" "$control"
+	(cd "$work" && ncly "${command[@]}" "$control" --dry-run --json --no-input) >/dev/null 2>"$scratch/metadata-stderr" || die 'metadata control dry run failed'
+	[[ ! -e "$converted" && ! -L "$converted" ]] || die 'metadata control dry run published an output'
+	no_stage
+	(cd "$work" && ncly "${command[@]}" "$control" --json --no-input) >"$scratch/metadata-answer" 2>"$scratch/metadata-stderr" || die "metadata control failed: $(cat "$scratch/metadata-stderr")"
+	grep -qF '"normalized":true' "$scratch/metadata-answer" || die 'metadata control did not exercise normalization'
+	[[ "$(tag artist "$converted")" == 'Nicely metadata control' ]] || die 'controlled artist metadata was not retained'
+	no_stage
+	echo 'metadata: controlled artist retention demonstrates that descriptive data can remain'
 }
 
 # Decode every frame and audio sample. A readable header cannot prove this.
@@ -196,20 +196,20 @@ above "$orientation" 0.8 || die "$output does not show the input the same way up
 # spec: loudness
 audio="$(heard "$output")"
 # spec: metadata-retained
-metadata_retained "$input" "$output"
+retained264="$(metadata_retained_count "$input" "$output")"
 
 # spec: publication-cases
 # A distinct short output makes a forbidden overwrite visible to the readers.
 mv "$output" "$work/first.mp4"
 ffmpeg -nostdin -v error -i "$work/first.mp4" -t 1 -c copy "$output"
 old_before="$(sum "$output")"
-expect_refusal CONFIRMATION_REQUIRED
+expect_refusal CONFIRMATION_REQUIRED "$input"
 [[ "$(sum "$output")" == "$old_before" ]] || die 'refusal changed the existing output'
 decoded "$output"
 awk -v old="$(duration "$output")" -v full="$(duration "$work/first.mp4")" 'BEGIN { exit !(old < full) }' || die 'the old-output control is not distinct'
 mv "$output" "$work/old-output.mp4"
 ln -s "$input" "$output"
-expect_refusal USAGE_INVALID --force
+expect_refusal USAGE_INVALID "$input" --force
 [[ -L "$output" && "$(readlink "$output")" == "$input" ]] || die 'refusal changed the output link'
 [[ "$(sum "$input")" == "$input_before" ]] || die 'refusal changed the input'
 [[ "$(duration "$output")" == "$in_duration" ]] || die 'the refused link no longer reads as the input'
@@ -260,26 +260,19 @@ h265_duration="$(duration "$output")"
 awk -v a="$in_duration" -v b="$h265_duration" 'BEGIN { d = a - b; exit !(d <= 0.1 && d >= -0.1) }' ||
 	die "the duration of the h265 output, $h265_duration s, is not within 0.1 s of $in_duration s"
 audio265="$(heard "$output")"
-metadata_retained "$input" "$output"
+retained265="$(metadata_retained_count "$input" "$output")"
+# A zero observation is allowed. Demonstrate the possibility once, rather than
+# re-reading the same control after each codec.
+if ((retained264 + retained265 == 0)); then metadata_control; fi
 
 # The domain refuses a still image, which HandBrakeCLI accepts: HandBrake
 # reads a PNG as a title of 0 ticks, and a JPEG as one frame at 25 fps.
-refused() {
-	local code=0
-	(cd "$work" && ncly "${command[@]}" "$@" --json --no-input) >/dev/null 2>"$scratch/refusal" || code=$?
-	if [[ "$code" != 2 ]] || ! grep -qF '"code":"VIDEO_CONVERT_UNREADABLE"' "$scratch/refusal"; then
-		die "ncly ${command[*]} $*: want exit 2 with VIDEO_CONVERT_UNREADABLE, got exit $code: $(cat "$scratch/refusal")"
-	fi
-}
 # spec: still-image
 for still in still.png still.jpg; do
 	ffmpeg -nostdin -v error -f lavfi -i testsrc2=size=320x240 -frames:v 1 "$work/$still"
-	refused "$work/$still" --dry-run
-	refused "$work/$still"
+	expect_refusal VIDEO_CONVERT_UNREADABLE "$work/$still"
 	[[ ! -e "$work/still.converted.mp4" ]] || die "$work/$still gave the output $work/still.converted.mp4"
-	for stage in "$work"/.ncly-video-convert-*; do
-		[[ ! -e "$stage" ]] || die "$work/$still left the staging folder $stage"
-	done
+	no_stage
 done
 
 echo "acceptance: ncly ${command[*]} passed on $input: H.264 with $encoder and AAC at $audio, $got, $out_duration s, orientation SSIM $orientation; two runs give $determinism; --codec h265 gives $h265 with $encoder265, $h265_duration s, AAC at $audio265; a PNG and a JPEG are refused as still images"

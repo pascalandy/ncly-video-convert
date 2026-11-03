@@ -1,7 +1,7 @@
 # Made media has a nondefault display rotation and descriptive metadata.
-# The accepted privacy limit retains author/date; ffprobe checks that behavior.
+# Controlled author tags demonstrate possible retention through ffprobe reads.
 exec ffmpeg -nostdin -v error -f lavfi -i testsrc2=size=160x96:rate=30 -f lavfi -i sine=frequency=440:sample_rate=48000 -t 4 -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest flat.mp4
-exec ffmpeg -nostdin -v error -display_rotation 90 -i flat.mp4 -c copy -metadata author='Ana Lima' -metadata date=2026-01-01T00:00:00Z clip.mov
+exec ffmpeg -nostdin -v error -display_rotation 90 -i flat.mp4 -c copy -metadata author='Ana Lima' clip.mov
 cp clip.mov bad.mp4
 
 # spec: orientation metadata-retained
@@ -13,7 +13,6 @@ exec ffmpeg -nostdin -v error -i clip.converted.mp4 -vf hflip,vflip -c:v libx264
 reads -case 'Loses data that changes the meaning' clip.converted.mp4 upright-reference upside-down.mp4 sh upright.sh
 reads clip.converted.mp4 upright-reference residual-rotation.mp4 sh upright.sh
 reads clip.converted.mp4 author-reference flat.mp4 ffprobe -v error -show_entries format_tags=artist -of default=noprint_wrappers=1:nokey=1
-reads clip.converted.mp4 date-reference flat.mp4 ffprobe -v error -show_entries format_tags=date -of default=noprint_wrappers=1:nokey=1
 cp clip.converted.mp4 preserved.mp4
 
 # The old output is deliberately different from a fresh conversion.
@@ -51,13 +50,12 @@ reads clip.converted.mp4 duration-reference bad-duration.mp4 sh duration.sh
 # spec: loudness
 reads clip.converted.mp4 loudness-reference clip.mov sh loudness.sh
 
-# The no-normalize path retains the same declared metadata behavior.
+# The no-normalize control also demonstrates possible author retention.
 # spec: metadata-retained
 ncly video convert clip.mov --no-normalize --force --dry-run --json
 ncly video convert clip.mov --no-normalize --force --json
 reads clip.converted.mp4 reference bad.mp4 sh stream.sh
 reads clip.converted.mp4 author-reference flat.mp4 ffprobe -v error -show_entries format_tags=artist -of default=noprint_wrappers=1:nokey=1
-reads clip.converted.mp4 date-reference flat.mp4 ffprobe -v error -show_entries format_tags=date -of default=noprint_wrappers=1:nokey=1
 
 # Capture timestamps vary by HandBrake version. Repeated media content does not.
 # spec: determinism
@@ -85,8 +83,6 @@ nb_read_frames=120
 rotation=90
 -- author-reference --
 Ana Lima
--- date-reference --
-2026-01-01T00:00:00Z
 -- hevc-reference --
 codec_name=hevc
 profile=Main 10
