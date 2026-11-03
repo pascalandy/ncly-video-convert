@@ -42,6 +42,7 @@ protect temporary.mov temporary.converted.mp4.tmp
 ncly video convert temporary.mov --dry-run --json
 keeps 0 ncly video convert temporary.mov --json
 reads -case 'Temporary file' temporary.converted.mp4.tmp original-reference preserved.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames:stream_side_data=rotation -count_frames -of default=noprint_wrappers=1
+reads temporary.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames:stream_side_data=rotation -count_frames -of default=noprint_wrappers=1
 
 # Each property has a reader and a bad variant that fails that property.
 # spec: duration
