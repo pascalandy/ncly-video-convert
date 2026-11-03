@@ -25,7 +25,7 @@ ncly video convert clip.mov --force --dry-run
 ncly video convert clip.mov --force
 ```
 
-A failed conversion keeps the previous output. Errors, timeouts, Ctrl-C, and SIGTERM clean staging data. A dry run checks the paths, the output folder's access, HandBrake availability, and that HandBrake finds a video in the input, without encoding. It cannot establish that the whole video will decode.
+A failed conversion keeps the previous output. Errors, timeouts, Ctrl-C, and SIGTERM must clean staging data. Cleanup for a worker that ignores a stop signal is blocked by [nicely#468](https://github.com/pascalandy/nicely/issues/468). The [cleanup Open line](spec.md#open-lines) must be proven before release. A dry run checks the paths, the output folder's access, HandBrake availability, and that HandBrake finds a video in the input, without encoding. It cannot establish that the whole video will decode.
 
 ## Install
 

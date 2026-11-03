@@ -86,7 +86,7 @@ while [ "$#" -gt 0 ]; do
 done
 echo partial > "$output"
 if [ "$QA_PHASE" = resistant ]; then
-  # Add measured cleanup work to expose the nested deadline race.
+  # Add cleanup work for the unfixed-SDK negative control.
   stage=$(dirname "$output")
   i=0
   while [ "$i" -lt 20000 ]; do

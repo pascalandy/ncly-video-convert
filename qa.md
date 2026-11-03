@@ -47,7 +47,7 @@ The Expected column adds the other assertions.
 | SIGTERM to `ncly` during the preview scan or the encode | `terminated` | Exit 143 | [signals](testdata/script/signals.txtar) |
 | Still image, such as a PNG or a JPEG | `still-image` | The message and hint name the file | [still](testdata/script/still.txtar) |
 
-After each of these cases, the input, any previous output, and the target of a link stay the same. No `.ncly-video-convert-*` staging folder and no HandBrakeCLI process stay.
+After each of these cases, the input, any previous output, and the target of a link stay the same. No `.ncly-video-convert-*` staging folder and no HandBrakeCLI process may stay. The resistant-worker case remains unproven under the [cleanup Open line](spec.md#open-lines), pending [nicely#468](https://github.com/pascalandy/nicely/issues/468). These conditions must pass before signoff.
 
 ## Uninstall
 
