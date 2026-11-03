@@ -42,7 +42,7 @@ read = "loudnorm_options, config_input, uninit; measured and normalizeAudio"
 
 [[facts]]
 kind = "sourced"
-statement = "The two-hour default timeout covers scan, encode and normalization together. The SDK stops children on timeout, SIGINT and SIGTERM. Staging is removed on ordinary returns; SIGKILL, power loss and filesystem refusal can prevent cleanup."
+statement = "The two-hour default timeout covers scan, encode and normalization together. The SDK stops children on timeout, SIGINT and SIGTERM. Staging is removed on ordinary returns. SIGKILL, power loss and filesystem refusal can prevent cleanup. A HandBrake that ignores the whole 15-second stop budget can also prevent cleanup because ncly then stops the extension."
 source = "spec.md and convert.go"
 revision = "708ad0a"
 read = "execution paragraph and Limits; convert, job.encode, and its deferred cleanup"
@@ -70,7 +70,7 @@ read = "encoder paragraph; Result, Fidelity and Known limits; probe, ssim, decod
 
 [[facts]]
 kind = "unknown"
-statement = "Does the dry-run answer disclose that hard-link or replacing-rename capability is still unchecked until publication?"
+statement = "Whether the destination supports its hard link or replacing rename remains unknown until publication"
 id = "publication-pending"
 
 [[experiments]]
@@ -94,3 +94,11 @@ statement = "HandBrake 1.7.2 to 1.9.x always write conversion time as creation_t
 source = "https://github.com/HandBrake/HandBrake/blob/1.7.2/libhb/muxavformat.c and https://github.com/HandBrake/HandBrake/blob/1.10.0/libhb/muxavformat.c"
 revision = "1.7.2 and 1.10.0"
 read = "MP4 creation_time assignment in hb_mux_avformat_init and CreationTime metadata mapping"
+
+[[experiments]]
+command = "go run github.com/pascalandy/nicely/sdk/extensionrepo/cmd/extensionrepo scenario acceptance"
+result = "In an isolated Ubuntu 24.04 container, actual HandBrakeCLI 1.7.2+ds1-1build2 and FFmpeg 6.1.1-3ubuntu5 passed the revised made-media scenario in 15.975 s. Production, script, case and module bytes were compared with the committed tree."
+
+[[experiments]]
+command = "just acceptance /fixtures/nicely/video/IMG_1642.MOV"
+result = "In private Ubuntu 24.04 with HandBrake1.7.2, the old universal-retention assertion failed after successful conversion. Paired component probes isolated version-specific HandBrake metadata handling. The revised possibility criterion passes: the real input retains0/2known values and a normalized artist control demonstrates retention can occur. The old failure remains recorded separately."
