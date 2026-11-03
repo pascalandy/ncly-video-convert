@@ -97,8 +97,15 @@ read = "MP4 creation_time assignment in hb_mux_avformat_init and CreationTime me
 
 [[experiments]]
 command = "go run github.com/pascalandy/nicely/sdk/extensionrepo/cmd/extensionrepo scenario acceptance"
-result = "In an isolated Ubuntu 24.04 container, actual HandBrakeCLI 1.7.2+ds1-1build2 and FFmpeg 6.1.1-3ubuntu5 passed the revised made-media scenario in 15.975 s. Production, script, case and module bytes were compared with the committed tree."
+result = "In private Ubuntu 24.04, actual HandBrakeCLI 1.7.2+ds1-1build2 and FFmpeg 6.1.1-3ubuntu5 passed the made-media scenario in 23.359 s. The tested production, script, case and module bytes match 3148a95e275222c329d63c70794be31a336281e4."
 
 [[experiments]]
 command = "just acceptance /fixtures/nicely/video/IMG_1642.MOV"
-result = "In private Ubuntu 24.04 with HandBrake1.7.2, the old universal-retention assertion failed after successful conversion. Paired component probes isolated version-specific HandBrake metadata handling. The revised possibility criterion passes: the real input retains0/2known values and a normalized artist control demonstrates retention can occur. The old failure remains recorded separately."
+result = "In private Ubuntu 24.04 with HandBrake 1.7.2, the old universal-retention assertion failed after successful conversion. Paired component probes isolated a difference in metadata handling between the tested HandBrake builds. The revised possibility criterion passes: the real input retains 0/2 known values and a normalized artist control demonstrates retention can occur. The old failure remains recorded separately."
+
+[[facts]]
+kind = "sourced"
+statement = "HandBrake 1.7.2 and 1.9.2 lack Apple QuickTime aliases in metadata_keys. Version 1.10.0 adds aliases for creation date, maker and location. This source difference explains why Apple-tagged inputs can differ across tool builds; it is not a preservation promise."
+source = "https://github.com/HandBrake/HandBrake/blob/1.7.2/libhb/muxavformat.c and https://github.com/HandBrake/HandBrake/blob/1.9.2/libhb/muxavformat.c and https://github.com/HandBrake/HandBrake/blob/1.10.0/libhb/muxavformat.c"
+revision = "1.7.2, 1.9.2 and 1.10.0"
+read = "metadata_keys and hb_lookup_meta_key; the exact source revision of om1's snapshot was not inspected"

@@ -4,7 +4,7 @@ This file answers one question: what does the UAT of `ncly video convert` add to
 
 ## Prerequisites
 
-- `just acceptance` passes on the fixture that [spec.md](spec.md#acceptance) names in `## Acceptance`, in a clone at the tested tag. It checks the Result, Fidelity and Determinism below, pending publication, possible metadata retention, safety preconditions, and the refusal of a still image, the `still-image` line of [spec.md](spec.md#acceptance)
+- `just acceptance` passes on the fixture that [spec.md](spec.md#acceptance) names in `## Acceptance`, in a clone at the tested tag. It checks the Result, Fidelity and Determinism below, pending publication, possible metadata retention, `publication-cases`, and the refusal of a still image, the `still-image` line of [spec.md](spec.md#acceptance)
 - HandBrakeCLI, at the version that [vision.md](vision.md) names as tested
 - `ffprobe` and `ffmpeg`, for the independent check. The command runs `ffmpeg` too, to normalize the audio
 - On Linux with an Intel GPU, Intel's media runtime, such as `vpl-gpu-rt` on Arch Linux, so that Quick Sync encodes
@@ -56,7 +56,6 @@ After the UAT, run `just uninstall` in the checkout of the extension. For an ins
 ## Known limits
 
 - The output can retain private metadata. See the accepted `private-metadata` limit in [spec.md](spec.md#ncly-video-convert) and opt-in follow-up [#18](https://github.com/pascalandy/ncly-video-convert/issues/18)
-
 - HDR HLG input gives an 8-bit output tagged HLG with the default H.264. Nobody checked it on a real screen yet. With `--codec h265`, the output stays 10-bit HLG.
 - With `--json`, the error goes to stderr, as the contract says ([nicely#352](https://github.com/pascalandy/nicely/issues/352)).
 - `locales/` holds only `en.toml`, so under `--lang fr-CA` the help and the errors print in English without a warning, as the contract's fallback to `en` says. Nicely's own text is in English too.

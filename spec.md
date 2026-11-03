@@ -22,7 +22,7 @@ The input is opened only for reading. Its folder is resolved through the file sy
 
 | ID | State | Limit | Accepted |
 |---|---|---|---|
-| `private-metadata` | limit | The command does not remove descriptive metadata on purpose. Author, capture date, device metadata or location can remain, depending on the input, tool versions and normalization. Do not rely on either retention or removal. This is the accepted privacy loss for `Output: Keeps private data of the input` and `Output: Keeps data that a reader needs`. Opt-in stripping is tracked in [#18](https://github.com/pascalandy/ncly-video-convert/issues/18) | Head Chef decision relayed by Chef 2 on 2026-11-03 in brigade a1d9, recorded in [PR #17](https://github.com/pascalandy/ncly-video-convert/pull/17) |
+| `private-metadata` | limit | The command does not request descriptive metadata removal. Author, capture date, device metadata or location can remain, depending on the input, tool versions and normalization. Do not rely on either retention or removal. This is the accepted privacy loss for `Output: Keeps private data of the input` and `Output: Keeps data that a reader needs`. Opt-in stripping is tracked in [#18](https://github.com/pascalandy/ncly-video-convert/issues/18) | Head Chef decision relayed by Chef 2 on 2026-11-03 in brigade a1d9, recorded in [PR #17](https://github.com/pascalandy/ncly-video-convert/pull/17) |
 | `kit-accepted-limits` | limit | SDK v0.26.0 still demands privacy-removal reads for an accepted retention limit. [nicely#462](https://github.com/pascalandy/nicely/issues/462) must ship in Nicely before this build can pass check and signoff. Coverage remains failed; no waiver is taken | Head Chef D068 decision relayed by Chef 2 on 2026-11-03, recorded in [PR #17](https://github.com/pascalandy/ncly-video-convert/pull/17) |
 
 ## Effects
@@ -73,11 +73,11 @@ The real input is the fixture `IMG_1642.MOV` of the [fixture registry](https://g
 - `duration`: The output keeps the duration of the input, within 0.1 s
 - `loudness`: The output keeps an audio track, at -16 LUFS within 0.5 LU, with a true peak of at most -1 dBTP, at 48 kHz
 - `hevc-output`: With `--codec h265`, the output is H.265 Main 10 with the `hvc1` tag, which Apple's players need
-- `old-handbrake`: A CLI without metadata-stripping support still converts successfully under the unchanged default policy
+- `old-handbrake`: A CLI without metadata-stripping support converts successfully without a stripping request
 - `publication-cases`: Existing-output, input-link and temporary-path cases construct their preconditions and independently check preserved or published content
 - `determinism`: Within one normalization mode, repeated conversions keep frame count, duration and audio stream hashes; video SSIM is at least 0.999 for CPU encoders and 0.99 for GPU encoders, independently of container timestamps
 - `publication-pending`: A dry run lists `publication.link` without force and `publication.rename` with force in `pending_checks`
-- `metadata-retained`: The acceptance fixtures demonstrate possible retention of descriptive metadata, without promising that every input tag survives
+- `metadata-retained`: Descriptive metadata can remain in an output. Controlled tagged media proves this possibility; real-input acceptance reports retained known values without requiring any from that input
 
 The domain refuses these inputs:
 
@@ -87,7 +87,7 @@ The domain refuses these inputs:
 
 ## Case matrix
 
-Each family names the criteria that its accepted and refused inputs prove. `acceptance.sh` independently checks real-input orientation, duration, audio, H.265, repeatability, possible metadata retention and pending publication. The made-media scenario also reads the primary output and its safety cases.
+Each family names the criteria that its accepted and refused inputs prove. `acceptance.sh` independently checks real-input orientation, duration, audio, H.265, repeatability, possible metadata retention, pending publication and `publication-cases`. The made-media scenario also reads the primary output and its publication cases.
 
 | Family | Source | Accepted | Refused |
 |---|---|---|---|

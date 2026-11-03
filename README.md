@@ -9,7 +9,7 @@ ncly video convert clip.mov
 
 The result is `clip.converted.mp4` beside the input, using HandBrake's built-in `Fast 1080p30` preset. The command encodes on the GPU when the machine has one that HandBrake can use: Apple VideoToolbox on a Mac, or Intel Quick Sync on Linux. Otherwise it encodes on the CPU. It brings the audio to -16 LUFS with ffmpeg. The command preserves the original and publishes the output only after HandBrake succeeds and produces a nonempty regular file.
 
-The command does not remove descriptive metadata on purpose. The output can keep the input's author, capture date, device metadata or location, depending on the input, tool versions and normalization. Do not rely on either retention or removal. Inspect metadata before sharing a converted video:
+The command does not request descriptive metadata removal. The output can keep the input's author, capture date, device metadata or location, depending on the input, tool versions and normalization. Do not rely on either retention or removal. Inspect metadata before sharing a converted video:
 
 ```sh
 ffprobe -v error -show_entries format_tags -of default=noprint_wrappers=1 clip.converted.mp4
@@ -31,9 +31,9 @@ ncly video convert clip.mov --force --dry-run
 ncly video convert clip.mov --force
 ```
 
-A failed conversion keeps the previous output. The command removes staging after ordinary errors and handled stops. If HandBrake ignores a stop signal, a `.ncly-video-convert-*` folder can remain beside the output. [Nicely#468](https://github.com/pascalandy/nicely/issues/468) tracks that open defect.
+A failed conversion keeps the previous output. The command removes staging after ordinary errors, SIGINT and SIGTERM. If HandBrake ignores a stop signal, a `.ncly-video-convert-*` folder can remain beside the output. [Nicely#468](https://github.com/pascalandy/nicely/issues/468) tracks that open defect.
 
-A dry run checks paths, folder access, HandBrake availability, and the input's video title without encoding. It cannot prove that the whole video decodes or that the folder supports publication. A new output needs a hard link. With `--force`, replacement needs a rename. The JSON answer lists these pending operations as `video_decode` and either `publication.link` or `publication.rename` in `pending_checks`.
+A dry run checks paths, folder access, HandBrake availability, and the input's video title without encoding. It cannot prove that the whole video decodes or that the folder supports publication. Without `--force`, a new output needs a hard link. With `--force`, publication uses a rename whether or not the output already exists. The JSON answer lists these pending operations as `video_decode` and either `publication.link` or `publication.rename` in `pending_checks`.
 
 ## Install
 
