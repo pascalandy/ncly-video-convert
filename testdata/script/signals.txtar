@@ -41,8 +41,8 @@ cmp clip.converted.mp4 previous.mp4
 exec sh bin/assert-invariants
 
 # A worker that ignores TERM exposes the nested SDK cleanup budget defect.
-# Keep the stage-absence assertion failing until nicely#468 ships; no waiver.
-# cleanup-limits is an unclaimed Open line until that public case passes.
+# Keep the stage-absence assertion active; no waiver or retry-until-green.
+# The cleanup-limits Open line gives baseline evidence and the closure rule.
 # spec: terminated
 env QA_PHASE=resistant
 env QA_MARKER=started-TERM-resistant
@@ -85,7 +85,16 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 echo partial > "$output"
-if [ "$QA_PHASE" = resistant ]; then trap '' INT TERM; fi
+if [ "$QA_PHASE" = resistant ]; then
+  # Add measured cleanup work to expose the nested deadline race.
+  stage=$(dirname "$output")
+  i=0
+  while [ "$i" -lt 20000 ]; do
+    : > "$stage/f$i"
+    i=$((i+1))
+  done
+  trap '' INT TERM
+fi
 : > "$WORK/$QA_MARKER"
 exec sleep 30
 -- bin/assert-invariants --
