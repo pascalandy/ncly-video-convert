@@ -4,7 +4,7 @@ This file answers one question: what does the UAT of `ncly video convert` add to
 
 ## Prerequisites
 
-- `just acceptance` passes on the fixture that [spec.md](spec.md#acceptance) names in `## Acceptance`, in a clone at the tested tag. It checks the Result, the Fidelity, and the Determinism below, and the refusal of a still image, the `still-image` line of [spec.md](spec.md#acceptance)
+- `just acceptance` passes on the fixture that [spec.md](spec.md#acceptance) names in `## Acceptance`, in a clone at the tested tag. It checks the Result, Fidelity and Determinism below, pending publication, possible metadata retention, safety preconditions, and the refusal of a still image, the `still-image` line of [spec.md](spec.md#acceptance)
 - HandBrakeCLI, at the version that [vision.md](vision.md) names as tested
 - `ffprobe` and `ffmpeg`, for the independent check. The command runs `ffmpeg` too, to normalize the audio
 - On Linux with an Intel GPU, Intel's media runtime, such as `vpl-gpu-rt` on Arch Linux, so that Quick Sync encodes
@@ -24,7 +24,7 @@ This file answers one question: what does the UAT of `ncly video convert` add to
 | Encoder | On a machine with a GPU encoder that HandBrake lists, the answer names it: `vt_h264` on a Mac, `qsv_h264` on Linux with Quick Sync. Elsewhere, it names `x264` | `encoders.txtar` proves the choice from a stub help. Manual: the encoders that HandBrake lists depend on the GPU and the drivers of the host, which no test knows. Read the encoder in the last line of `just acceptance` |
 | Fidelity | The output keeps the properties `orientation`, `duration`, and `loudness` of [spec.md](spec.md#acceptance) | `just acceptance` |
 | Loudness | `ffmpeg -i <output> -map 0:a:0 -af loudnorm=print_format=json -f null -` measures -16 LUFS within 0.5 LU, and a true peak of at most -1 dBTP. The audio is at 48 kHz | `just acceptance` |
-| Determinism | Two runs on one host give the same frame count and duration, the same audio stream hash (`ffmpeg -v error -i <output> -map 0:a -c copy -f streamhash -hash sha256 -`), and a close video (`ffmpeg -i <first> -i <second> -lavfi ssim -f null -`). With a CPU encoder, the video SSIM is at least 0.999, and the whole-file checksum must match on macOS, since the Linux build of HandBrakeCLI can encode a slightly different video stream. A GPU encoder never gives the same file twice: its video SSIM is at least 0.99, such as 0.995 for two runs of `vt_h264` on the fixture | `just acceptance` |
+| Determinism | With the default normalization mode, two runs on one host give the same frame count and duration, the same audio stream hash (`ffmpeg -v error -i <output> -map 0:a -c copy -f streamhash -hash sha256 -`), and a close video (`ffmpeg -i <first> -i <second> -lavfi ssim -f null -`). With a CPU encoder, the video SSIM is at least 0.999, and the whole-file checksum must match on macOS, since the Linux build of HandBrakeCLI can encode a slightly different video stream. A GPU encoder never gives the same file twice: its video SSIM is at least 0.99, such as 0.995 for two runs of `vt_h264` on the fixture | `just acceptance` |
 
 ## Error cases
 
@@ -47,13 +47,15 @@ The Expected column adds the other assertions.
 | SIGTERM to `ncly` during the preview scan or the encode | `terminated` | Exit 143 | [signals](testdata/script/signals.txtar) |
 | Still image, such as a PNG or a JPEG | `still-image` | The message and hint name the file | [still](testdata/script/still.txtar) |
 
-After each of these cases, the input, any previous output, and the target of a link stay the same. No `.ncly-video-convert-*` staging folder and no HandBrakeCLI process may stay. The resistant-worker case remains unproven under the [cleanup Open line](spec.md#open-lines), pending [nicely#468](https://github.com/pascalandy/nicely/issues/468). These conditions must pass before signoff.
+After each of these cases, the input, any previous output, and the target of a link stay the same. A `.ncly-video-convert-*` staging folder or HandBrakeCLI process must not remain. The resistant-worker case remains unproven under the [cleanup Open line](spec.md#open-lines), pending [nicely#468](https://github.com/pascalandy/nicely/issues/468).
 
 ## Uninstall
 
 After the UAT, run `just uninstall` in the checkout of the extension. For an install without that recipe, move these four entries of Nicely's extensions folder to the trash: `ncly-video-convert`, `ncly-video-convert.toml`, `ncly-video-convert.locales/`, and `ncly-video-convert.skill/`. That folder is `nicely/extensions/` in `XDG_DATA_HOME`, or in `~/.local/share` when `XDG_DATA_HOME` is not set. Then `ncly describe video convert --json` must exit 2 with `NOT_FOUND`.
 
 ## Known limits
+
+- The output can retain private metadata. See the accepted `private-metadata` limit in [spec.md](spec.md#ncly-video-convert) and opt-in follow-up [#18](https://github.com/pascalandy/ncly-video-convert/issues/18)
 
 - HDR HLG input gives an 8-bit output tagged HLG with the default H.264. Nobody checked it on a real screen yet. With `--codec h265`, the output stays 10-bit HLG.
 - With `--json`, the error goes to stderr, as the contract says ([nicely#352](https://github.com/pascalandy/nicely/issues/352)).
@@ -64,4 +66,4 @@ After the UAT, run `just uninstall` in the checkout of the extension. For an ins
 - One conversion of the fixture takes about 25 s with VideoToolbox on the macOS test host, and about 1 minute with x264, plus about 10 s to normalize the audio. These times grow when the host runs other work.
 - Damage that the scan of the dry run misses shows only in the run. [spec.md](spec.md#ncly-video-convert) says what the scan decodes.
 - Isolated XDG folders, such as for a scratch install, can stop the `just` that mise installed: with another `XDG_CONFIG_HOME`, its shim finds no version and fails with `No version is set for shim: just`. Run `mise which just` before you change the XDG variables, and call that path.
-- A clip without a `creation_time` tag, such as a clip that `ffmpeg` generates, gets the clock's time in its output, so two of its runs never give the same file checksum. HandBrake 1.7.2 through 1.9.x writes conversion time even when the source has a capture tag. From 1.10 it preserves a source tag when present. Normalization can omit that container tag; other descriptive metadata can remain. The made-media scenario checks --no-normalize determinism through frames, duration, audio packet hashes and video SSIM, without promising container-time preservation.
+- Container timestamps can differ without changing media content. See the version-dependent timestamp behavior under [Runtime constraints](spec.md#runtime-constraints). The made-media scenario checks determinism without normalization. The real-input script checks the same media properties in the default normalization mode.

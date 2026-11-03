@@ -40,7 +40,7 @@ cmp clip.mov clip.mov.before
 cmp clip.converted.mp4 previous.mp4
 exec sh bin/assert-invariants
 
-# A worker that ignores TERM exposes the nested SDK cleanup budget defect.
+# A worker that ignores TERM exposes the public staging leak of nicely#468.
 # Keep the stage-absence assertion active; no waiver or retry-until-green.
 # The cleanup-limits Open line gives baseline evidence and the closure rule.
 # spec: terminated

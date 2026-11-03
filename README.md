@@ -9,7 +9,13 @@ ncly video convert clip.mov
 
 The result is `clip.converted.mp4` beside the input, using HandBrake's built-in `Fast 1080p30` preset. The command encodes on the GPU when the machine has one that HandBrake can use: Apple VideoToolbox on a Mac, or Intel Quick Sync on Linux. Otherwise it encodes on the CPU. It brings the audio to -16 LUFS with ffmpeg. The command preserves the original and publishes the output only after HandBrake succeeds and produces a nonempty regular file.
 
-The command does not remove private metadata. The output can retain author, capture date, device and GPS location metadata from the input. Review that metadata before sharing a converted video. An opt-in stripping flag is tracked in [#18](https://github.com/pascalandy/ncly-video-convert/issues/18).
+The command does not remove descriptive metadata on purpose. The output can keep the input's author, capture date, device metadata or location, depending on the input, tool versions and normalization. Do not rely on either retention or removal. Inspect metadata before sharing a converted video:
+
+```sh
+ffprobe -v error -show_entries format_tags -of default=noprint_wrappers=1 clip.converted.mp4
+```
+
+An opt-in stripping flag is tracked in [#18](https://github.com/pascalandy/ncly-video-convert/issues/18).
 
 The output is H.264, which plays everywhere. For H.265 in 10 bits, which keeps an HDR video in HDR, or to keep the loudness of the input:
 
@@ -25,7 +31,9 @@ ncly video convert clip.mov --force --dry-run
 ncly video convert clip.mov --force
 ```
 
-A failed conversion keeps the previous output. Errors, timeouts, Ctrl-C, and SIGTERM must clean staging data. Cleanup for a worker that ignores a stop signal is blocked by [nicely#468](https://github.com/pascalandy/nicely/issues/468). The [cleanup Open line](spec.md#open-lines) must be proven before release. A dry run checks the paths, the output folder's access, HandBrake availability, and that HandBrake finds a video in the input, without encoding. It cannot establish that the whole video will decode.
+A failed conversion keeps the previous output. The command removes staging after ordinary errors and handled stops. If HandBrake ignores a stop signal, a `.ncly-video-convert-*` folder can remain beside the output. [Nicely#468](https://github.com/pascalandy/nicely/issues/468) tracks that open defect.
+
+A dry run checks paths, folder access, HandBrake availability, and the input's video title without encoding. It cannot prove that the whole video decodes or that the folder supports publication. A new output needs a hard link. With `--force`, replacement needs a rename. The JSON answer lists these pending operations as `video_decode` and either `publication.link` or `publication.rename` in `pending_checks`.
 
 ## Install
 
@@ -49,7 +57,7 @@ Use `ncly video convert --help` for options. Machine callers use `--json --no-in
 
 The extension speaks English only. Under another language, such as `--lang fr-CA`, its help and errors fall back to English without a warning.
 
-The command has no batches, records, or progress display. See [spec.md](spec.md) for failures and filesystem limits, and [AGENTS.md](AGENTS.md) to change or release the extension.
+The command has no batches, records, or progress display. See [spec.md](spec.md) for failures, accepted limits and runtime constraints, and [AGENTS.md](AGENTS.md) to change or release the extension.
 
 ## Let your agent find it
 

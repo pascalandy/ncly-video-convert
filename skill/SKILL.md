@@ -7,12 +7,12 @@ description: Use when converting one local video to MP4 with HandBrakeCLI while 
 
 Use `ncly video convert` for one video and one MP4 output. It encodes on the GPU when the machine has one, and brings the audio to -16 LUFS. For batches, other video jobs, or custom encoding settings, choose another tool.
 
-The output can keep private metadata, including author, capture date and GPS location. Choose another tool when the user needs metadata removed before sharing.
+The command does not request metadata removal. Depending on the input, tool versions and normalization, author, capture date, device or location data can remain. Do not assume either retention or removal. Choose another tool when the user needs metadata removed before sharing or preserved exactly.
 
 Keep the default H.264 unless the user asks for H.265, or for HDR to stay HDR: then pass `--codec h265`. Pass `--no-normalize` only when the user wants the loudness of the input.
 
 1. Read `ncly describe video convert --json`, then dry-run the intended call
-2. Resolve any prerequisite, input, or destination error before execution. A dry run checks availability, paths, and that HandBrake finds a video in the input. Only the conversion decodes the whole video
+2. Resolve any prerequisite, input, or destination error before execution. A dry run checks availability, paths, and that HandBrake finds a video in the input. The JSON `pending_checks` lists what execution still has to prove: `video_decode` and `publication.link`, or `publication.rename` with `--force`
 3. Run the conversion. Success returns a verified `output` and `size_bytes`, with the `codec`, the `encoder`, and whether the audio was `normalized`. The input stays unchanged
 4. A warning keeps the output. On `VIDEO_CONVERT_GPU_RUNTIME_MISSING`, relay its hint to the user, who can install Intel's media runtime. On `VIDEO_CONVERT_GPU_FAILED`, the GPU encoder failed and the command ran the CPU encoder instead
 5. On failure, stdout is empty and the error object ends stderr. Read the code there

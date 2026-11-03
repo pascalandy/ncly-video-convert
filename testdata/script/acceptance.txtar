@@ -1,7 +1,7 @@
 # Made media has a nondefault display rotation and descriptive metadata.
 # The accepted privacy limit retains author/date; ffprobe checks that behavior.
 exec ffmpeg -nostdin -v error -f lavfi -i testsrc2=size=160x96:rate=30 -f lavfi -i sine=frequency=440:sample_rate=48000 -t 4 -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest flat.mp4
-exec ffmpeg -nostdin -v error -display_rotation 90 -i flat.mp4 -c copy -metadata author='Ana Lima' -metadata date=2026-01-01T00:00:00Z -metadata creation_time=2026-01-01T00:00:00Z clip.mov
+exec ffmpeg -nostdin -v error -display_rotation 90 -i flat.mp4 -c copy -metadata author='Ana Lima' -metadata date=2026-01-01T00:00:00Z clip.mov
 cp clip.mov bad.mp4
 
 # spec: orientation metadata-retained
@@ -22,7 +22,7 @@ cp clip.mov exists.mov
 cp flat.mp4 exists.converted.mp4
 protect exists.mov exists.converted.mp4
 refuses CONFIRMATION_REQUIRED ncly video convert exists.mov
-reads -case 'Exists, without --force' exists.converted.mp4 flat-reference preserved.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames:stream_side_data=rotation -count_frames -of default=noprint_wrappers=1
+reads -case 'Exists, without --force' exists.converted.mp4 flat-reference preserved.mp4 sh stream.sh
 
 # A real output symlink points to the input before the refusal. The reader
 # sees the preserved original dimensions and its unapplied display matrix.
@@ -31,7 +31,7 @@ cp clip.mov alias.mov
 symlink alias.converted.mp4 -> alias.mov
 protect alias.mov alias.converted.mp4
 refuses USAGE_INVALID ncly video convert alias.mov --force
-reads -case 'Is a link to the input' alias.converted.mp4 original-reference preserved.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames:stream_side_data=rotation -count_frames -of default=noprint_wrappers=1
+reads -case 'Is a link to the input' alias.converted.mp4 original-reference preserved.mp4 sh stream.sh
 
 # A predictable temporary name is already a link to the protected input.
 # Exclusive random staging must ignore it, leave it unchanged and publish
@@ -41,8 +41,8 @@ symlink temporary.converted.mp4.tmp -> temporary.mov
 protect temporary.mov temporary.converted.mp4.tmp
 ncly video convert temporary.mov --dry-run --json
 keeps 0 ncly video convert temporary.mov --json
-reads -case 'Temporary file' temporary.converted.mp4.tmp original-reference preserved.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames:stream_side_data=rotation -count_frames -of default=noprint_wrappers=1
-reads temporary.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames:stream_side_data=rotation -count_frames -of default=noprint_wrappers=1
+reads -case 'Temporary file' temporary.converted.mp4.tmp original-reference preserved.mp4 sh stream.sh
+reads temporary.converted.mp4 reference bad.mp4 sh stream.sh
 
 # Each property has a reader and a bad variant that fails that property.
 # spec: duration
@@ -55,14 +55,13 @@ reads clip.converted.mp4 loudness-reference clip.mov sh loudness.sh
 # spec: metadata-retained
 ncly video convert clip.mov --no-normalize --force --dry-run --json
 ncly video convert clip.mov --no-normalize --force --json
-reads clip.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames:stream_side_data=rotation -count_frames -of default=noprint_wrappers=1
+reads clip.converted.mp4 reference bad.mp4 sh stream.sh
 reads clip.converted.mp4 author-reference flat.mp4 ffprobe -v error -show_entries format_tags=artist -of default=noprint_wrappers=1:nokey=1
 reads clip.converted.mp4 date-reference flat.mp4 ffprobe -v error -show_entries format_tags=date -of default=noprint_wrappers=1:nokey=1
 
 # Capture timestamps vary by HandBrake version. Repeated media content does not.
 # spec: determinism
 cp clip.converted.mp4 repeat-first.mp4
-exec sleep 1.1
 ncly video convert clip.mov --no-normalize --force --dry-run --json
 ncly video convert clip.mov --no-normalize --force --json
 cp stdout repeat-answer.json
@@ -94,6 +93,10 @@ profile=Main 10
 codec_tag_string=hvc1
 -- duration-reference --
 4 seconds within 0.1 s
+-- stream.sh --
+#!/bin/sh
+set -eu
+ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames:stream_side_data=rotation -count_frames -of default=noprint_wrappers=1 "$1"
 -- duration.sh --
 #!/bin/sh
 set -eu

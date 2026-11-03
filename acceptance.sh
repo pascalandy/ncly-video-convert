@@ -16,6 +16,27 @@ sum() {
 	if command -v sha256sum >/dev/null; then sha256sum "$1"; else shasum -a 256 "$1"; fi | cut -d ' ' -f 1
 }
 
+no_stage() {
+	local candidate
+	for candidate in "$work"/.ncly-video-convert-*; do
+		[[ ! -e "$candidate" && ! -L "$candidate" ]] || die "staging remains at $candidate"
+	done
+}
+
+expect_refusal() {
+	local code=$1 mode status
+	shift
+	local -a preview
+	for mode in preview run; do
+		preview=(--json --no-input)
+		if [[ "$mode" == preview ]]; then preview+=(--dry-run); fi
+		status=0
+		(cd "$work" && ncly "${command[@]}" "$input" "$@" "${preview[@]}") >"$scratch/refused.out" 2>"$scratch/refused.err" || status=$?
+		[[ "$status" == 2 ]] || die "$mode expected $code, got exit $status: $(cat "$scratch/refused.err")"
+		grep -qF "\"code\":\"$code\"" "$scratch/refused.err" || die "$mode omitted $code"
+	done
+}
+
 command=(video convert)
 fixture="${1:-}"
 if [[ -n "$fixture" ]]; then
@@ -47,11 +68,10 @@ if [[ -n "$fixture" ]]; then
 	cp "$fixture" "$work/"
 	input="$work/${fixture##*/}"
 else
-	# HandBrake 1.10+ can preserve this fixed source timestamp. Older
-	# supported versions write their clock; stream comparisons below tolerate it.
+	# Make rotated media with descriptive metadata for the independent readers.
 	ffmpeg -nostdin -v error -f lavfi -i testsrc2=size=1280x720:rate=30 -f lavfi -i sine=frequency=440:sample_rate=48000 \
 		-t 4 -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest "$scratch/flat.mp4"
-	ffmpeg -nostdin -v error -display_rotation 180 -i "$scratch/flat.mp4" -c copy -metadata artist="Nicely acceptance" -metadata date=2026-01-01T00:00:00Z -metadata creation_time=2026-01-01T00:00:00Z "$work/clip.mov"
+	ffmpeg -nostdin -v error -display_rotation 180 -i "$scratch/flat.mp4" -c copy -metadata artist="Nicely acceptance" -metadata date=2026-01-01T00:00:00Z "$work/clip.mov"
 	input="$work/clip.mov"
 fi
 # spec: publication-pending
@@ -60,6 +80,10 @@ grep -qF '"pending_checks":["video_decode","publication.link"]' "$scratch/plan" 
 grep -qF '"overwrite":false' "$scratch/plan" || die 'the create dry run changed overwrite consent'
 planned="$(sed -n 's/.*"output":"\([^"]*\)".*/\1/p' "$scratch/plan")"
 [[ -n "$planned" && ! -e "$planned" ]] || die 'the create dry run published an output'
+no_stage
+# spec: publication-cases
+input_before="$(sum "$input")"
+ln -s "$input" "$planned.tmp"
 status=0
 (cd "$work" && ncly "${command[@]}" "$input" --json --no-input) >"$scratch/answer" 2>"$scratch/stderr" || status=$?
 cat "$scratch/answer"
@@ -68,6 +92,9 @@ if [[ -n "$fixture" && "$(sum "$fixture")" != "$before" ]]; then
 	die "the checksum of $fixture changed"
 fi
 [[ "$status" == 0 ]] || die "ncly ${command[*]} exited $status"
+[[ -L "$planned.tmp" && "$(readlink "$planned.tmp")" == "$input" ]] || die 'the planted temporary link changed'
+[[ "$(sum "$input")" == "$input_before" ]] || die 'the conversion changed its input through the temporary link'
+no_stage
 grep -qF '"ok":true' "$scratch/answer" || die 'the answer holds no "ok":true'
 # The answer names the output by its physical path, such as /private/var on macOS.
 output="$(sed -n 's/.*"output":"\([^"]*\)".*/\1/p' "$scratch/answer")"
@@ -88,21 +115,31 @@ tag() {
 	ffprobe -v error -show_entries "format_tags=$1" -of default=noprint_wrappers=1:nokey=1 "$2"
 }
 metadata_retained() {
-	local source_key output_key value candidates=0 retained=0
+	local source=$1 target=$2 source_key output_key value pair candidates=0 retained=0
 	for pair in artist:artist date:date com.apple.quicktime.make:make com.apple.quicktime.creationdate:date; do
 		source_key="${pair%%:*}" output_key="${pair#*:}"
-		value="$(tag "$source_key" "$input")"
+		value="$(tag "$source_key" "$source")"
 		if [[ -n "$value" ]]; then
 			candidates=$((candidates + 1))
-			if [[ "$(tag "$output_key" "$1")" == "$value" ]]; then
+			if [[ "$(tag "$output_key" "$target")" == "$value" ]]; then
 				retained=$((retained + 1))
 			fi
 		fi
 	done
-	# The registered fixture supplies capture metadata. This demonstrates
-	# possible retention, without promising that every device tag survives.
-	if [[ "$candidates" -gt 0 && "$retained" -eq 0 ]]; then
-		die "the fixture supplied descriptive metadata but none of the known values remained"
+	printf 'metadata: %s of %s known input values retained in %s\n' "$retained" "$candidates" "${target##*/}"
+	# Retention depends on the input and tool versions. A zero observation is
+	# allowed; a tagged control still has to demonstrate the declared possibility.
+	if [[ "$retained" -eq 0 ]]; then
+		local control="$work/metadata-control.mov" converted="$work/metadata-control.converted.mp4"
+		if [[ ! -f "$converted" ]]; then
+			ffmpeg -nostdin -v error -f lavfi -i testsrc2=size=160x96:rate=30 -f lavfi -i sine=frequency=440:sample_rate=48000 \
+				-t 2 -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest -metadata artist="Nicely metadata control" "$control"
+			(cd "$work" && ncly "${command[@]}" "$control" --dry-run --json --no-input) >"$scratch/metadata-plan" 2>"$scratch/metadata-stderr" || die 'metadata control dry run failed'
+			(cd "$work" && ncly "${command[@]}" "$control" --json --no-input) >"$scratch/metadata-answer" 2>"$scratch/metadata-stderr" || die "metadata control failed: $(cat "$scratch/metadata-stderr")"
+			grep -qF '"normalized":true' "$scratch/metadata-answer" || die 'metadata control did not exercise normalization'
+		fi
+		[[ "$(tag artist "$converted")" == 'Nicely metadata control' ]] || die 'controlled artist metadata was not retained'
+		echo 'metadata: controlled artist retention demonstrates that descriptive data can remain'
 	fi
 }
 
@@ -159,10 +196,28 @@ above "$orientation" 0.8 || die "$output does not show the input the same way up
 # spec: loudness
 audio="$(heard "$output")"
 # spec: metadata-retained
-metadata_retained "$output"
+metadata_retained "$input" "$output"
 
-# A second run checks determinism, as the Determinism criterion of qa.md says.
+# spec: publication-cases
+# A distinct short output makes a forbidden overwrite visible to the readers.
 mv "$output" "$work/first.mp4"
+ffmpeg -nostdin -v error -i "$work/first.mp4" -t 1 -c copy "$output"
+old_before="$(sum "$output")"
+expect_refusal CONFIRMATION_REQUIRED
+[[ "$(sum "$output")" == "$old_before" ]] || die 'refusal changed the existing output'
+decoded "$output"
+awk -v old="$(duration "$output")" -v full="$(duration "$work/first.mp4")" 'BEGIN { exit !(old < full) }' || die 'the old-output control is not distinct'
+mv "$output" "$work/old-output.mp4"
+ln -s "$input" "$output"
+expect_refusal USAGE_INVALID --force
+[[ -L "$output" && "$(readlink "$output")" == "$input" ]] || die 'refusal changed the output link'
+[[ "$(sum "$input")" == "$input_before" ]] || die 'refusal changed the input'
+[[ "$(duration "$output")" == "$in_duration" ]] || die 'the refused link no longer reads as the input'
+unlink "$output"
+no_stage
+
+# spec: determinism
+# Repeat in the same normalization mode and compare independent media readings.
 (cd "$work" && ncly "${command[@]}" "$input" --json --no-input) >/dev/null 2>"$scratch/stderr" || die "the second run failed: $(cat "$scratch/stderr")"
 # A GPU encoder never gives the same file twice, and the Linux build of
 # HandBrakeCLI can encode a slightly different video stream.
@@ -192,6 +247,7 @@ force_before="$(sum "$output")"
 grep -qF '"pending_checks":["video_decode","publication.rename"]' "$scratch/plan" || die 'the force dry run omitted publication.rename from pending_checks'
 grep -qF '"overwrite":true' "$scratch/plan" || die 'the force dry run lost overwrite consent'
 [[ "$(sum "$output")" == "$force_before" ]] || die 'the force dry run changed the existing output'
+no_stage
 # spec: hevc-output
 (cd "$work" && ncly "${command[@]}" "$input" --codec h265 --force --json --no-input) >"$scratch/answer" 2>"$scratch/stderr" ||
 	die "the h265 run failed: $(cat "$scratch/stderr")"
@@ -204,7 +260,7 @@ h265_duration="$(duration "$output")"
 awk -v a="$in_duration" -v b="$h265_duration" 'BEGIN { d = a - b; exit !(d <= 0.1 && d >= -0.1) }' ||
 	die "the duration of the h265 output, $h265_duration s, is not within 0.1 s of $in_duration s"
 audio265="$(heard "$output")"
-metadata_retained "$output"
+metadata_retained "$input" "$output"
 
 # The domain refuses a still image, which HandBrakeCLI accepts: HandBrake
 # reads a PNG as a title of 0 ticks, and a JPEG as one frame at 25 fps.

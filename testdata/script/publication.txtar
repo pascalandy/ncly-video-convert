@@ -1,5 +1,4 @@
-# The first adoption scenario checks the public dry-run answer before any
-# implementation changes. Filesystem capability remains pending until publish.
+# Filesystem publication capability remains pending in the public dry-run answer.
 chmod 755 bin/HandBrakeCLI
 # spec: publication-pending
 ncly video convert create.mov --no-normalize --dry-run --json
