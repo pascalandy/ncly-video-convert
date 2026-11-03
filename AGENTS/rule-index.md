@@ -1,0 +1,63 @@
+# Rule index
+
+The linked checks enforce these rules.
+`Prose only` marks a rule that waits for a check, and `AGENTS.md` or the skill states it.
+`Prose on purpose` gives the judgment that keeps a rule in prose.
+`just check` prints how many rules are `Prose only`.
+`test-kit.md` in the pinned contract gives scenario syntax and spec IDs.
+
+| Rule | Enforced by |
+|---|---|
+| Each running command executes in a scenario | [Kit executed calls][calls], [kit coverage report][coverage] |
+| Call only through `ncly`, `ncly-video-convert`, `exits`, `signal`, `refuses`, `appears`, `predicts`, `keeps`, or `holds` | [Kit call forms][links] |
+| Each manifest example runs | [Kit examples][examples] |
+| Declare each own error and warning code, with its commands and modes | [`extension.Check`][declarations] |
+| Observe each declared code in its scope, or supply an `untested` reason with an issue | [Kit code coverage][codes], [kit coverage report][coverage] |
+| A dry run and run refuse the same preparation failure on the same input | [Kit `refuses`][refuses] |
+| A signal case checks the exit, answer, and surviving files | [Kit `signal`][signal] |
+| Publication proof matches the current code, model, probe, and tool pins | `TestPublicationRecord`; read [verifying-video-publication](../.agents/skills/verifying-video-publication/SKILL.md) when these change |
+| Template and SDK versions move together through `just update` | [Kit version link][links] |
+| The skill names only declared commands | [Kit skill links][links] |
+| Sign off through `just signoff` and release through `just release vX.Y.Z` | [Signoff][signoff] writes its [receipt][signoff-receipt], and [release][release] reads it in its [receipt][release-receipt] |
+| A copied recipe holds no script | [Core template test][template-test] |
+| An acceptance case compares the primary output, from a reader that is not the wrapped program, with an independent reference | [Kit `reads`][reads], and [release runs acceptance][release] on the real input; partial: the reviewer judges that the reader and the reference are independent |
+| A test claims each line of Failures and Acceptance in `spec.md` | [Kit spec IDs][spec] |
+| One bounded job, no arbitrary argument relay; the skill teaches when | Prose on purpose: the domain decides whether a job has useful bounds, and when the skill sends an agent to it |
+| A command that writes a user file proves its invariants with `protect`, `refuses`, `signal`, `appears`, `keeps`, and `holds` | [Kit `protect`][protected], [kit `refuses`][refuses], [kit `signal`][signal], [kit `appears`][appears], [kit `keeps`][keeps], [kit `holds`][holds] |
+| `## Publication` declares each mode of each command that may write a user file, and the manifest agrees | [Kit publication form][publication], [kit publication rows][publication-row] |
+| A check proves each obligation of `## Publication`, or a reason covers it; no reason stays after its check | [Kit publication report][publication-report], [kit coverage report][coverage]; partial: the reviewer of round 1 accepts each reason |
+| A successful dry run changes no file, and predicts the destination and the overwrite choice of its run | [Kit `predicts`][predicts] |
+| The dry run checks each ability of the destination that the run needs, or reports it as pending | [Kit `predicts`][predicts], [kit `without`][guarded]; partial: only Linux removes an ability, and the type of the file system stays the same |
+| Without an ability of the row, the run fails closed, or publishes with another operation of its row | [Kit `without`][guarded], [kit publication report][publication-report]; partial: Linux only |
+| No child of a run remains after it exits | [Kit guard][guard], [kit `keeps`][keeps]; partial: macOS checks only the process group |
+| The stage is private, exclusive, and unpredictable, and `spec.md` states the permission policy of the published file | Prose on purpose: no check proves that a name is unpredictable, and the domain chooses the mode of its output |
+| A failure after the commit keeps the new output and reports the failure | Prose only |
+
+[The build loop](rule-index/loop.md) holds the rules of the rounds of the `nicely-extension` skill.
+
+[calls]: https://github.com/pascalandy/nicely/blob/main/sdk/extensiontest/calls.go
+[links]: https://github.com/pascalandy/nicely/blob/main/sdk/extensiontest/links.go
+[examples]: https://github.com/pascalandy/nicely/blob/main/sdk/extensiontest/examples.go
+[declarations]: https://github.com/pascalandy/nicely/blob/main/sdk/extension/extension.go
+[codes]: https://github.com/pascalandy/nicely/blob/main/sdk/extensiontest/codes.go
+[refuses]: https://github.com/pascalandy/nicely/blob/main/sdk/extensiontest/paired.go
+[signal]: https://github.com/pascalandy/nicely/blob/main/sdk/extensiontest/signal.go
+[appears]: https://github.com/pascalandy/nicely/blob/main/sdk/extensiontest/appears.go
+[spec]: https://github.com/pascalandy/nicely/blob/main/sdk/extensiontest/spec.go
+[coverage]: https://github.com/pascalandy/nicely/blob/main/sdk/extensiontest/coverage_report.go
+[protected]: https://github.com/pascalandy/nicely/blob/main/sdk/extensiontest/protected.go
+[publication]: https://github.com/pascalandy/nicely/blob/main/sdk/extensiontest/publication.go
+[publication-row]: https://github.com/pascalandy/nicely/blob/main/sdk/extensiontest/publication_row.go
+[publication-report]: https://github.com/pascalandy/nicely/blob/main/sdk/extensiontest/publication_report.go
+[predicts]: https://github.com/pascalandy/nicely/blob/main/sdk/extensiontest/predicts.go
+[reads]: https://github.com/pascalandy/nicely/blob/main/sdk/extensiontest/acceptance.go
+[keeps]: https://github.com/pascalandy/nicely/blob/main/sdk/extensiontest/keeps.go
+[holds]: https://github.com/pascalandy/nicely/blob/main/sdk/extensiontest/holds.go
+[guarded]: https://github.com/pascalandy/nicely/blob/main/sdk/extensiontest/guarded.go
+[guard]: https://github.com/pascalandy/nicely/blob/main/sdk/extensiontest/guard/main.go
+
+[signoff]: https://github.com/pascalandy/nicely/blob/main/sdk/extensionrepo/signoff.go
+[signoff-receipt]: https://github.com/pascalandy/nicely/blob/main/sdk/extensionrepo/signoff_receipt.go
+[release]: https://github.com/pascalandy/nicely/blob/main/sdk/extensionrepo/release.go
+[release-receipt]: https://github.com/pascalandy/nicely/blob/main/sdk/extensionrepo/release_receipt.go
+[template-test]: https://github.com/pascalandy/nicely/blob/main/scripts/template-test.sh

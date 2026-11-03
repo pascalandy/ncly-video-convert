@@ -9,6 +9,19 @@
 - The two codecs that play most widely: H.264, the default, and H.265 in 10 bits
 - ffmpeg's `loudnorm` filter, which brings the audio to -16 LUFS, as the earlier video tools of the author did
 
+## Intake
+
+`just records` writes this part from `intake.toml`. Change that file, then run `just records` again.
+
+- Effects: `worker/inspect.py` reads the file once, in chunks of 64 KiB, and writes nothing. Source: `worker/inspect.py` of the template, at the Nicely version that `go.mod` pins. Read: the function `main`
+- Exit codes: 0 with one JSON object on stdout, and 2 for a wrong argument count. Source: `worker/inspect.py` of the template, at the Nicely version that `go.mod` pins. Read: `main` and the last two lines of the file
+- Resource use: memory stays near one chunk, whatever the size of the file. Source: `worker/inspect.py` of the template, at the Nicely version that `go.mod` pins. Read: the loop of `main`
+- Known failures: Python raises an error and exits 1 on a file that it cannot open. Source: `worker/inspect.py` of the template, at the Nicely version that `go.mod` pins. Read: the call to `open` in `main`, which nothing catches
+
+**Experiments.**
+
+- `python3 worker/inspect.py notes.md`: on a file of three lines, the last without a newline, it printed `"lines": 3` and exited 0
+
 ## Refuses
 
 - Overwriting an output without explicit `--force`

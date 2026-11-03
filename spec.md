@@ -3,6 +3,14 @@
 `manifest.toml` holds the command's flags, effects, requirements, and result schemas.
 
 ## ncly video convert
+Each line of Failures and Acceptance has the state `proven`: a test claims it, and the test kit requires that claim.
+A line that no test proves yet has the state `open`, and waits under `## Open lines`.
+A line that the user accepted as a limit has the state `limit`, in a table under **Limits.** of its command.
+`just finish` fails while a line is open, or while a limit has no record of the user's acceptance.
+
+This file is a form filled for the example command, `ncly video convert`.
+It inspects a file until you replace it.
+Give each command a section like that one, then delete each line that starts with "Fill:".
 
 Success means HandBrakeCLI exited zero and the published output exists as a nonempty regular file. The answer names its absolute path and size, the codec, the HandBrake encoder, and whether the audio was normalized. `clip.mov` produces `clip.converted.mp4` in the input folder. The command uses `Fast 1080p30` and the MP4 container. `--codec` picks the video codec: `h264`, the default, which plays everywhere, or `h265` in 10 bits, which keeps an HDR input in HDR.
 
@@ -11,6 +19,11 @@ The encoder follows the machine. `HandBrakeCLI --help` lists only the encoders t
 By default, ffmpeg normalizes the audio after the encode, with the two passes of its `loudnorm` filter. The first pass measures the encoded audio. The second pass writes a copy that keeps the video stream as it is, and encodes the audio in AAC at 160 kbit/s and 48 kHz, since `loudnorm` works at 192 kHz. The target is -16 LUFS integrated, a range of 12 LU, and a true peak of at most -1 dBTP. The filter aims at -1.5 dBTP, since the AAC encode raises the peak. An input without audio, or with silent audio, keeps HandBrake's audio, and so does `--no-normalize`, which needs no ffmpeg.
 
 In both execution and dry run, the command validates a readable regular input, the destination and its folder's read, write and search access, HandBrakeCLI availability, a video title of more than one frame in the input, the encoder, and ffmpeg when it will normalize. One scan of the input, `HandBrakeCLI --input <file> --scan --json`, finds that title, its duration, and its audio tracks. It reads one title and decodes up to 10 preview frames, encodes nothing, and writes no file. HandBrake reads a still image as a title of one frame or less, such as 0 ticks of its 90 kHz clock for a PNG, and one frame at 25 fps for a JPEG, so the scan refuses such a title. A dry run starts only this scan, `HandBrakeCLI --help`, and `ffmpeg -version`. It creates no staging folder or output, and reports the planned paths, preset, codec, encoder, and normalization. Decoding of the whole video remains a pending check until execution.
+Fill: write every line of a command in its first pull request, from the generic cases of the contract and the cases of the program. The skill in `.agents/skills/nicely-extension/` says how.
+
+Fill: the failure of an input that exists but that the wrapped program cannot read, with a `VIDEO_CONVERT_` code and exit 2. A dry run, when the command has one, gives the same failure.
+
+Fill: each limit that the user accepted, as a row of a table under **Limits.**, with the columns ID, State, Limit, and Accepted. A limit never contradicts a line of Failures or of Acceptance.
 
 Execution writes in a private staging folder beside the destination. Only a successful, nonempty regular output can be published. Without overwrite consent, an atomic hard link refuses a destination created during conversion. With consent, an atomic rename replaces the previous output after success. A final stat proves the published file exists. `--timeout`, two hours by default, bounds the scan, the encode, and the normalization together, and the message of a stop names that value. All return paths remove staging, after the SDK stops HandBrake or ffmpeg on a timeout or signal. A failed forced conversion preserves the previous output.
 
@@ -53,6 +66,13 @@ A warning never changes the exit code.
 ## Limits
 
 HandBrake must support the built-in preset. Availability is checked without parsing its version because distribution builds can print a source revision instead of a release number. The destination filesystem must support hard links for publication without overwrite consent. Dry run decodes only what the scan reads, and reserves no destination. HandBrake also exits 2 for an unknown preset, so the scan carries no preset, and an encode that exits 2 stays `RUNTIME`. A broken HandBrake install that cannot load its built-in presets exits 2 on the scan too, so it reports `VIDEO_CONVERT_UNREADABLE` for any input; the command does not parse HandBrake's text to tell the two apart. Cleanup handles ordinary errors, timeouts, Ctrl-C, and SIGTERM; SIGKILL, power loss, and filesystem refusal can prevent any process from cleaning temporary files. So can a HandBrake that ignores a stop signal for the SDK's whole cleanup time, 15 seconds, since ncly then stops the extension too. Such temporary data is never published as the output. HandBrake inherits ordinary environment variables under the SDK's environment rules. The command discards HandBrake's stdout during the encode, where HandBrake prints encode progress, so the SDK's capture limit does not apply to it. A GPU encoder does not give the same file from run to run. Quick Sync decodes nothing, since its decoding stopped HandBrake with exit 3 on the fixture. On om1, `x265_10bit` was about 2.7 times slower than `x264` on the CPU, so `--codec h265` is slow on a machine without a GPU encoder. When a linear gain would pass the true peak, `loudnorm` compresses the loudness range instead.
+| `bad-input` | The file is missing or is no regular file, or `--timeout` is no duration | `USAGE_INVALID` |
+| `no-python` | `python3` is missing or older than 3.9, or its version probe fails or does not finish within 10 s | `PREREQ_MISSING` |
+| `worker-fails` | `python3` exits with a code other than 0, its output is missing, malformed, or over 1 MB, or the timeout expires, even during the probe | `RUNTIME` |
+| `interrupted` | Ctrl-C arrives | `INTERRUPTED` |
+| `terminated` | SIGTERM arrives | `TERMINATED` |
+
+**Limits.** None.
 
 ## Acceptance
 
@@ -68,3 +88,43 @@ The domain refuses these inputs:
 | ID | Input that HandBrakeCLI accepts | Code |
 |---|---|---|
 | `still-image` | A still image, such as a PNG or a JPEG, which the scan reads as a first title of one frame or less. The message and hint name the file | `VIDEO_CONVERT_UNREADABLE`, exit 2 |
+Fill: each input that the wrapped program accepts but that the domain refuses, with its code. A scenario and `acceptance.sh` refuse each one.
+
+## Case matrix
+
+Before the review of round 1, this table lists each family of cases of each command, with the spec IDs of its tests (#423).
+A family comes from a generic case that applies, or from a family that the intake found.
+An example of such a family is each way that the input declares how to read it.
+Accepted names the lines whose tests give an input that passes. Refused names the lines whose tests refuse an input, or `None`.
+Each refusal and each branch that classifies an input has a pair: a test that passes, and a test that refuses.
+Each line of Failures and of Acceptance is in a family. `just finish` fails when a family has no test.
+A repair of a finding adds a pair of tests for its whole family, not only a test of the reported example.
+
+| Family | Source | Accepted | Refused |
+|---|---|---|---|
+| The input is a regular file that exists | Input: Unreadable | `size`, `lines` | `bad-input` |
+| The input holds text | Input: Of the wrong type | `lines` | `not-text` |
+| `python3` runs the worker | Other: Missing program, and the intake | `size` | `no-python`, `worker-fails` |
+| A signal stops the run | Interruption | `size` | `interrupted`, `terminated` |
+
+Fill: one row for each family of cases of your commands, in place of the rows of `inspect`.
+
+## Publication
+
+This part declares each command that creates or replaces a user file, as `publication.md` in the folder that `just contract` prints defines.
+`just check` fails when a command whose effects set `user_writes` has no row.
+It also fails when no scenario proves an obligation of a row, and no reason covers it.
+
+None: `ncly video convert` creates or replaces no user file.
+
+Fill: for a command that publishes a file, a table with the columns Command, Mode, Destination, Overwrite, Protected, Operation, and Dry run. Give each mode one row.
+
+Fill: a second table with the columns Command, Mode, Obligation, and Reason, for each obligation that no scenario proves.
+
+## Open lines
+
+A round of the skill in `.agents/skills/nicely-extension/` moves an open line into Failures or Acceptance, with the scenario that claims it.
+
+None.
+
+Fill: each line that no test proves yet, in a table with the columns ID, Command, Part, Case, and Code. Each finding that `review.toml` records as `open` names the ID of its row, so `spec.md` and the ledger agree. The test kit does not read this part.

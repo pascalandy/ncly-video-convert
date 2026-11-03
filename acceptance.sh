@@ -154,6 +154,17 @@ else
 	above "$runs" "$least" || die "two runs differ: video SSIM $runs, want $least or more"
 	determinism="the same frames and audio, and a video SSIM of $runs"
 fi
+# Fill: check each property of ## Acceptance on the primary output, with a reader
+# that is not the wrapped program. Compare the content that this reader gives
+# with an independent reference. A check of only a header or of the file type is
+# not sufficient. Here, wc and awk read the input again, and the answer must
+# match their counts.
+# spec: size
+# spec: lines
+# The acceptance cases of testdata/script/ prove each case of the Output group
+# of generic-cases.md on a made input, and the kit checks them with reads, as
+# acceptance-cases.md in the contract says. This script checks the real input.
+# A second run checks the Determinism criterion of qa.md.
 
 # --codec h265 gives H.265 Main 10, with the hvc1 tag that Apple's players need.
 # spec: hevc-output

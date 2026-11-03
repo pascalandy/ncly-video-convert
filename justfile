@@ -15,6 +15,21 @@ check:
 [no-exit-message]
 verify-publication:
     @go run ./internal/verify-publication
+# Fail until the loop is done: no open line, accepted limits, and a passing readiness verdict for this commit
+finish:
+    go run github.com/pascalandy/nicely/sdk/extensionrepo/cmd/extensionrepo finish
+
+# Write ## Intake of vision.md from intake.toml, and readiness.md from review.toml
+records:
+    go run github.com/pascalandy/nicely/sdk/extensionrepo/cmd/extensionrepo records
+
+# Check the TLA+ models of verification/tlc.json with the pinned TLC, then write the record that just check reads. A local jar needs the pinned SHA-256 too
+verify-models jar="":
+    go run github.com/pascalandy/nicely/sdk/extensionrepo/cmd/extensionrepo verify-models {{ if jar == "" { "" } else { quote(join(invocation_directory(), jar)) } }}
+
+# Run one scenario of testdata/script/ by its name, such as just scenario inspect
+scenario name:
+    go run github.com/pascalandy/nicely/sdk/extensionrepo/cmd/extensionrepo scenario {{ quote(name) }}
 
 # Check the committed SHA in a detached scratch worktree, then sign that exact SHA
 signoff:
@@ -32,9 +47,9 @@ install:
 uninstall:
     go run ./internal/export uninstall
 
-# Run the command of ## Acceptance on a copy of the fixture or on a made input
+# Run the command of ## Acceptance on a copy of the fixture or on a made input, in an owned run
 acceptance fixture="":
-    @bash acceptance.sh {{ if fixture == "" { "" } else { quote(join(invocation_directory(), fixture)) } }}
+    go run ./internal/export acceptance {{ if fixture == "" { "" } else { quote(join(invocation_directory(), fixture)) } }}
 
 # Run the target version's updater, with the template before the SDK, on a clean Git tree
 update version:
