@@ -37,7 +37,7 @@ Post-publication errors can accompany an output that already exists
 `verification/tlc.json` declares the model configurations and tool pins used by `sdk/verification`
 `verification/tlc-record.json` holds the model outcomes
 `verification/publication/record.json` holds the executable probe, mutation and restoration outcomes and binds the adapter, SDK signal implementation, probe and runner
-The three executable results remain explicit as readable publication evidence for COR-104-T10
+The three executable results remain explicit as readable publication evidence for [Nicely #427](https://github.com/pascalandy/nicely/issues/427)
 The mutation result must show its expected failure, between the passing probe and restoration
 The SDK omits nondeterministic counterexample graph counts; the Safety exploration records its complete graph
 Run `just verify-publication` and commit both records together

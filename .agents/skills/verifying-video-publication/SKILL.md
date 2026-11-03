@@ -42,6 +42,7 @@ Copy this checklist and track completion:
 
 Use `just verify-publication` instead of `just verify-models` in this repository
 It refreshes both records together; refreshing only the model record leaves the publication binding stale
+The SDK's model check still suggests `just verify-models`; use the complete recipe above here
 
 The normal gate needs no Java
 It rejects absent records and changes to covered source, SDK files, model, configurations, probe, runner, or tool pins

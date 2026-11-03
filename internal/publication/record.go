@@ -118,10 +118,7 @@ func hashFile(inputs map[string]string, name, path string) error {
 // CheckRecord runs without Java. Any drift requires the complete proof again.
 func CheckRecord(root string) error {
 	if problems := verification.CheckRecord(root); len(problems) != 0 {
-		detail := strings.ReplaceAll(strings.Join(problems, "; "),
-			"just verify-models, then commit "+verification.RecordFile,
-			"just verify-publication, then commit "+verification.RecordFile+" and "+RecordPath)
-		return fmt.Errorf("publication models: %s", detail)
+		return fmt.Errorf("publication models: %s", strings.Join(problems, "; "))
 	}
 	inputs, version, err := Inputs(root)
 	if err != nil {
