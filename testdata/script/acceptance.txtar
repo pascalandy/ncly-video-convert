@@ -1,36 +1,29 @@
-# A model of an acceptance case of ## Acceptance in spec.md, as Acceptance
-# cases in the folder that just contract prints defines. The case makes its
-# input, runs the command, then reads checks the primary output: it reads the
-# output with a reader that is not the wrapped program, compares the text of
-# the reader with the reference, and requires the bad variant to fail.
-#
-# The answer of ncly video convert is its output, so the kit's reader
-# answer reads its keys. It compares each whole value, so 30 lines never pass
-# for 3. Its bad variant is the answer of a worker that counts ten times.
-#
-# Fill: one case like this one for each property of ## Acceptance. For a
-# command that writes a file, read that file with a decoder of its format.
-# Give a case to each Output case that ## Case matrix names, with -case and
-# its name. For a block that a reader needs, give its private text with
-# -private, and make the bad variant keep the raw block.
-chmod 755 bin/python3
+# Made media has a nondefault display rotation and private author metadata.
+# ffprobe is independent of the adapter and of its wrapped programs.
+exec ffmpeg -nostdin -v error -f lavfi -i testsrc2=size=160x96:rate=30 -f lavfi -i sine=frequency=440:sample_rate=48000 -t 4 -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest flat.mp4
+exec ffmpeg -nostdin -v error -display_rotation 90 -i flat.mp4 -c copy -metadata author='Ana Lima' -metadata creation_time=2026-01-01T00:00:00Z clip.mov
+cp clip.mov bad.mp4
 
-# spec: size lines
-ncly video convert notes.md --json
-cp stdout answer.json
-reads answer.json reference bad.json answer size_bytes lines
+# spec: orientation duration loudness private-metadata
+ncly video convert clip.mov --dry-run --json
+ncly video convert clip.mov --json
+reads -case 'Keeps data that a reader needs' -private 'Ana Lima' clip.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height -of default=noprint_wrappers=1
+reads -case 'Keeps private data of the input' -private 'Ana Lima' clip.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height -of default=noprint_wrappers=1
+reads -case 'Loses data that changes the meaning' clip.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height -of default=noprint_wrappers=1
+reads -case 'Exists, without --force' clip.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height -of default=noprint_wrappers=1
+reads -case 'Is a link to the input' clip.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height -of default=noprint_wrappers=1
+reads -case 'Temporary file' clip.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height -of default=noprint_wrappers=1
 
--- notes.md --
-# Notes
-First line
-Last line
+# spec: hevc-output
+ncly video convert clip.mov --codec h265 --force --dry-run --json
+ncly video convert clip.mov --codec h265 --force --json
+reads clip.converted.mp4 hevc-reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,profile,codec_tag_string -of default=noprint_wrappers=1
+
 -- reference --
-size_bytes: 29
-lines: 3
--- bad.json --
-{"ok":true,"contract_version":1,"size_bytes":29,"lines":30}
--- bin/python3 --
-#!/bin/sh
-# python3 of this scenario: the Python of the system.
-case "$1" in --version) exec /usr/bin/python3 --version ;; esac
-exec /usr/bin/python3 "$@"
+codec_name=h264
+width=96
+height=160
+-- hevc-reference --
+codec_name=hevc
+profile=Main 10
+codec_tag_string=hvc1

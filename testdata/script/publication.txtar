@@ -1,0 +1,72 @@
+# The first adoption scenario checks the public dry-run answer before any
+# implementation changes. Filesystem capability remains pending until publish.
+chmod 755 bin/HandBrakeCLI
+# spec: publication-pending
+ncly video convert create.mov --no-normalize --dry-run --json
+stdout '"pending_checks":\["video_decode","publication.link"\]'
+ncly video convert replace.mov --no-normalize --force --dry-run --json
+stdout '"pending_checks":\["video_decode","publication.rename"\]'
+
+protect create.mov
+predicts ncly video convert create.mov --no-normalize
+protect replace.mov
+predicts ncly video convert replace.mov --no-normalize --force
+
+# The worker writes only inside staging until it has its complete result.
+env HOLD=marker
+protect timeline.mov
+holds marker timeline.converted.mp4 ncly video convert timeline.mov --no-normalize
+env HOLD=
+
+# A concurrently arriving destination is preserved without force.
+# spec: output-arrives
+env ARRIVE=marker
+protect race.mov
+appears marker race.converted.mp4 ncly video convert race.mov --no-normalize
+env ARRIVE=
+
+# The syscall guard removes an operation, so these prove fail-closed behavior
+# on a filesystem that refuses publication. The old output remains intact.
+# spec: publish-failed
+protect no-link.mov no-link.converted.mp4
+[linux] without link keeps 1 ncly video convert no-link.mov --no-normalize
+protect no-rename.mov no-rename.converted.mp4
+[linux] without rename keeps 1 ncly video convert no-rename.mov --no-normalize --force
+
+-- create.mov --
+source
+-- replace.mov --
+source
+-- replace.converted.mp4 --
+precious
+-- timeline.mov --
+source
+-- race.mov --
+source
+-- no-link.mov --
+source
+-- no-rename.mov --
+source
+-- no-rename.converted.mp4 --
+precious
+-- bin/HandBrakeCLI --
+#!/bin/sh
+case "$*" in
+  *--scan*) printf 'JSON Title Set: {"TitleList":[{"Duration":{"Ticks":90000},"FrameRate":{"Num":27000000,"Den":900000},"AudioList":[]}]}' ; exit 0 ;;
+  *--help*) printf '   x264\n   x265_10bit\n'; exit 0 ;;
+esac
+output=
+while [ "$#" -gt 0 ]; do
+  case "$1" in --output) shift; output="$1" ;; esac
+  shift
+done
+printf 'partial\n' > "$output"
+if [ -n "${HOLD:-}" ]; then
+  touch "$HOLD"
+  while [ -e "$HOLD" ]; do sleep 0.01; done
+fi
+if [ -n "${ARRIVE:-}" ]; then
+  touch "$ARRIVE"
+  while [ ! -e race.converted.mp4 ]; do sleep 0.01; done
+fi
+printf 'complete\n' > "$output"

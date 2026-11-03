@@ -159,8 +159,6 @@ fi
 # with an independent reference. A check of only a header or of the file type is
 # not sufficient. Here, wc and awk read the input again, and the answer must
 # match their counts.
-# spec: size
-# spec: lines
 # The acceptance cases of testdata/script/ prove each case of the Output group
 # of generic-cases.md on a made input, and the kit checks them with reads, as
 # acceptance-cases.md in the contract says. This script checks the real input.

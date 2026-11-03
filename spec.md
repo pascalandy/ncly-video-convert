@@ -65,6 +65,9 @@ The real input is the fixture `IMG_1642.MOV` of the [fixture registry](https://g
 - `loudness`: The output keeps an audio track, at -16 LUFS within 0.5 LU, with a true peak of at most -1 dBTP, at 48 kHz
 - `hevc-output`: With `--codec h265`, the output is H.265 Main 10 with the `hvc1` tag, which Apple's players need
 
+- `publication-pending`: A dry run lists `publication.link` without force and `publication.rename` with force in `pending_checks`
+- `private-metadata`: Display metadata is applied to the pixels while private author metadata is removed
+
 The domain refuses these inputs:
 
 | ID | Input that HandBrakeCLI accepts | Code |
@@ -107,7 +110,4 @@ Every obligation is exercised by `predicts`, `appears`, and Linux `without` chec
 
 ## Open lines
 
-| ID | Command | Part | Case | Code |
-|---|---|---|---|---|
-| `publication-pending` | `ncly video convert` | Acceptance | A dry run lists `publication.link` without force and `publication.rename` with force in pending_checks | None |
-| `private-metadata` | `ncly video convert` | Acceptance | Display metadata is applied to the pixels while private author metadata is removed | None |
+None. The generic cases above are covered by the declared families and the scenarios of this build.
