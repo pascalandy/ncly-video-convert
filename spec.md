@@ -16,7 +16,14 @@ In both execution and dry run, the command validates a readable regular input, t
 
 Execution writes in a private staging folder beside the destination. Only a successful, nonempty regular output can be published. Without overwrite consent, an atomic hard link refuses a destination created during conversion. With consent, an atomic rename replaces the previous output after success. A final stat proves the published file exists. `--timeout`, two hours by default, bounds the scan, the encode, and the normalization together, and the message of a stop names that value. All return paths remove staging, after the SDK stops HandBrake or ffmpeg on a timeout or signal. A failed forced conversion preserves the previous output.
 
-The input is opened only for reading. Its folder is resolved through the file system, so `..` after a symlink names the file that the kernel opens, and the output goes beside that file. An output that is a symlink, directory, special file, or the same file as the input is refused even with overwrite consent. The command never edits the existing output in place. HandBrake removes descriptive metadata, including author, before any normalization. Display declarations remain effective in the decoded video. The published file keeps the completed staged file's mode, as selected by HandBrake or ffmpeg under the caller's umask. Force mode replaces the old file and its mode together.
+The input is opened only for reading. Its folder is resolved through the file system, so `..` after a symlink names the file that the kernel opens, and the output goes beside that file. An output that is a symlink, directory, special file, or the same file as the input is refused even with overwrite consent. The command never edits the existing output in place. HandBrake keeps its existing metadata behavior. Display declarations remain effective in the decoded video. The published file keeps the completed staged file's mode, as selected by HandBrake or ffmpeg under the caller's umask. Force mode replaces the old file and its mode together.
+
+**Limits.**
+
+| ID | State | Limit | Accepted |
+|---|---|---|---|
+| `private-metadata` | limit | The output does not scrub descriptive metadata. Author, capture date and GPS location can remain. This is the accepted privacy loss for the Output cases that keep private data and keep data a reader needs. Opt-in stripping is tracked in [#18](https://github.com/pascalandy/ncly-video-convert/issues/18) | Head Chef decision relayed by Chef 2 on 2026-11-03 in brigade a1d9, recorded in [PR #17](https://github.com/pascalandy/ncly-video-convert/pull/17) |
+| `kit-accepted-limits` | limit | SDK v0.26.0 still demands privacy-removal reads for an accepted retention limit. [nicely#462](https://github.com/pascalandy/nicely/issues/462) must ship in Nicely before this build can pass check and signoff. Coverage remains failed; no waiver is taken | Head Chef D068 decision relayed by Chef 2 on 2026-11-03, recorded in [PR #17](https://github.com/pascalandy/ncly-video-convert/pull/17) |
 
 ## Effects
 
@@ -52,7 +59,7 @@ A warning never changes the exit code.
 | The GPU encoder exited with an error, so the command ran the CPU encoder of the codec instead | `VIDEO_CONVERT_GPU_FAILED` |
 | Linux with an Intel GPU, whose HandBrake build offers Quick Sync but lists no Quick Sync encoder for any codec | `VIDEO_CONVERT_GPU_RUNTIME_MISSING` |
 
-## Limits
+## Runtime constraints
 
 HandBrake must support the built-in preset. Availability is checked without parsing its version because distribution builds can print a source revision instead of a release number. The destination filesystem must support hard links for publication without overwrite consent. Dry run decodes only what the scan reads, and reserves no destination. HandBrake also exits 2 for an unknown preset, so the scan carries no preset, and an encode that exits 2 stays `RUNTIME`. A broken HandBrake install that cannot load its built-in presets exits 2 on the scan too, so it reports `VIDEO_CONVERT_UNREADABLE` for any input; the command does not parse HandBrake's text to tell the two apart. Cleanup handles ordinary errors, timeouts, Ctrl-C, and SIGTERM; SIGKILL, power loss, and filesystem refusal can prevent any process from cleaning temporary files. So can a HandBrake that ignores a stop signal for the SDK's whole cleanup time, 15 seconds, since ncly then stops the extension too. Such temporary data is never published as the output. HandBrake inherits ordinary environment variables under the SDK's environment rules. The command discards HandBrake's stdout during the encode, where HandBrake prints encode progress, so the SDK's capture limit does not apply to it. A GPU encoder does not give the same file from run to run. Quick Sync decodes nothing, since its decoding stopped HandBrake with exit 3 on the fixture. On om1, `x265_10bit` was about 2.7 times slower than `x264` on the CPU, so `--codec h265` is slow on a machine without a GPU encoder. When a linear gain would pass the true peak, `loudnorm` compresses the loudness range instead.
 
@@ -66,7 +73,8 @@ The real input is the fixture `IMG_1642.MOV` of the [fixture registry](https://g
 - `hevc-output`: With `--codec h265`, the output is H.265 Main 10 with the `hvc1` tag, which Apple's players need
 
 - `publication-pending`: A dry run lists `publication.link` without force and `publication.rename` with force in `pending_checks`
-- `private-metadata`: Display metadata is applied to the pixels while private author metadata is removed
+- `handbrake-compat`: The default conversion works with a HandBrake CLI whose help predates the metadata-stripping option
+- `metadata-retained`: Conversion retains the made input's author and capture date, with and without audio normalization
 
 The domain refuses these inputs:
 
@@ -84,7 +92,7 @@ Each family names the criteria that its accepted and refused inputs prove. Real 
 | Complete video title | Input: Empty; Input: Truncated; Input: Of the wrong type | `duration` | `no-video-title`, `still-image`, `scan-failed` |
 | Codec and encoder | Intake: H.264, H.265, GPU selection and CPU fallback | `hevc-output` | `bad-codec`, `encode-failed` |
 | Audio normalization | Intake: no audio, silence, measured loudness and AAC | `loudness` | `normalize-failed`, `no-ffmpeg` |
-| Tools installed | Other: Missing program | `duration` | `no-handbrake`, `no-ffmpeg` |
+| Tools installed | Other: Missing program; pre-1.10 CLI compatibility | `duration`, `handbrake-compat` | `no-handbrake`, `no-ffmpeg` |
 | Destination access | Input and output folder access | `duration` | `folder-access`, `unsafe-output` |
 | Existing destination and consent | Output: Exists, without --force | `duration` | `output-exists` |
 | Output cannot alias the input | Output: Is a link to the input | `duration` | `unsafe-output` |
@@ -94,8 +102,9 @@ Each family names the criteria that its accepted and refused inputs prove. Real 
 | Work has one deadline | Input: Very large; Input: Large expansion; Interruption: Timeout | `duration` | `bad-timeout`, `scan-failed`, `encode-failed` |
 | Stop and cleanup | Interruption: SIGINT or SIGTERM during the work | `duration` | `interrupted`, `terminated` |
 | Paths stay one argument | File name: Spaces; File name: Leading dash; File name: Shell characters | `duration` | `bad-input` |
-| Display orientation | Output: Loses data that changes the meaning | `orientation` | `still-image` |
-| Display declarations and private metadata | Output: Keeps data that a reader needs; Output: Keeps private data of the input | `private-metadata` | `still-image` |
+| Display orientation | Output: Loses data that changes the meaning | `orientation` | None |
+| Display declarations | Output: Keeps data that a reader needs | `orientation`, `metadata-retained` | None |
+| Descriptive metadata retained by policy | Output: Keeps private data of the input | `metadata-retained`, `private-metadata` | None |
 
 Regular-file input excludes DVD directories and executable scripts. The bounded job is the first video title and the preset's selected audio, with the codec and display declarations above; arbitrary arguments and active content are never relayed. Worker output and expensive decode share the declared timeout. The existing operational constraints above still apply.
 

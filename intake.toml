@@ -80,3 +80,10 @@ result = "om1 has HandBrake 20260607133641-9eb6c9368-makepkg and FFmpeg n9.0.2. 
 [[experiments]]
 command = "gh release view -R pascalandy/nicely --json tagName; ncly --version"
 result = "Latest published Nicely was v0.26.0 before just update; the verified linux_amd64 release archive installed ncly v0.26.0 on om1."
+
+[[facts]]
+kind = "sourced"
+statement = "HandBrake's --no-metadata option starts at 1.10.0. Older CLI versions can exit zero without output on an unknown option. The default conversion must preserve metadata behavior without that option."
+source = "https://github.com/HandBrake/HandBrake/blob/1.7.2/test/test.c and https://github.com/HandBrake/HandBrake/blob/1.10.0/test/test.c"
+revision = "1.7.2 and 1.10.0"
+read = "main option-parse cleanup and ParseOptions: no no-metadata entry in 1.7.2, new entry in 1.10.0"

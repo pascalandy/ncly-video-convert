@@ -9,6 +9,8 @@ ncly video convert clip.mov
 
 The result is `clip.converted.mp4` beside the input, using HandBrake's built-in `Fast 1080p30` preset. The command encodes on the GPU when the machine has one that HandBrake can use: Apple VideoToolbox on a Mac, or Intel Quick Sync on Linux. Otherwise it encodes on the CPU. It brings the audio to -16 LUFS with ffmpeg. The command preserves the original and publishes the output only after HandBrake succeeds and produces a nonempty regular file.
 
+The command does not remove private metadata. The output can retain author, capture date, device and GPS location metadata from the input. Review that metadata before sharing a converted video. An opt-in stripping flag is tracked in [#18](https://github.com/pascalandy/ncly-video-convert/issues/18).
+
 The output is H.264, which plays everywhere. For H.265 in 10 bits, which keeps an HDR video in HDR, or to keep the loudness of the input:
 
 ```sh

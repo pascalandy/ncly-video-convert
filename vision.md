@@ -24,6 +24,7 @@
 - A private staging directory is beside the destination. A complete staged file is published with a hard link in create mode and an atomic replacing rename in force mode; neither operation writes through an output link. Source: convert.go, at 708ad0a. Read: job.encode, publish, and checkDestination
 - Orientation, dimensions, frame rate, sample aspect ratio, colour and HDR declarations affect display. The preset bounds dimensions and frame rate; real acceptance checks orientation and duration, and H.265 keeps ten-bit HDR. Source: spec.md, qa.md, and acceptance.sh, at 708ad0a. Read: encoder paragraph; Result, Fidelity and Known limits; probe, ssim, decoded, heard and hevc-output checks
 - Does the dry-run answer disclose that hard-link or replacing-rename capability is still unchecked until publication?. Unknown: see the line `publication-pending` of `spec.md`
+- HandBrake's --no-metadata option starts at 1.10.0. Older CLI versions can exit zero without output on an unknown option. The default conversion must preserve metadata behavior without that option. Source: https://github.com/HandBrake/HandBrake/blob/1.7.2/test/test.c and https://github.com/HandBrake/HandBrake/blob/1.10.0/test/test.c, at 1.7.2 and 1.10.0. Read: main option-parse cleanup and ParseOptions: no no-metadata entry in 1.7.2, new entry in 1.10.0
 
 **Experiments.**
 

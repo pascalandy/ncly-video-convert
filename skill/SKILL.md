@@ -7,6 +7,8 @@ description: Use when converting one local video to MP4 with HandBrakeCLI while 
 
 Use `ncly video convert` for one video and one MP4 output. It encodes on the GPU when the machine has one, and brings the audio to -16 LUFS. For batches, other video jobs, or custom encoding settings, choose another tool.
 
+The output can keep private metadata, including author, capture date and GPS location. Choose another tool when the user needs metadata removed before sharing.
+
 Keep the default H.264 unless the user asks for H.265, or for HDR to stay HDR: then pass `--codec h265`. Pass `--no-normalize` only when the user wants the loudness of the input.
 
 1. Read `ncly describe video convert --json`, then dry-run the intended call

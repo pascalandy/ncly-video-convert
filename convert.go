@@ -331,7 +331,7 @@ func (j *job) transcode(ctx context.Context, staged string) contract.Outcome {
 // HandBrake exited with an error, as opposed to a timeout or a signal.
 func (j *job) handBrake(ctx context.Context, staged string) (contract.Outcome, bool) {
 	var exited bool
-	args := append([]string{"--input", j.input, "--output", staged, "--preset", preset, "--format", "av_mp4", "--no-metadata", "--verbose=0"}, j.encoder.Args...)
+	args := append([]string{"--input", j.input, "--output", staged, "--preset", preset, "--format", "av_mp4", "--verbose=0"}, j.encoder.Args...)
 	outcome := j.step(ctx, wrap.Program{Name: "HandBrakeCLI", Args: args, DiscardStdout: true}, 0, func(end wrap.Ended) contract.Outcome {
 		if end.Exit != 0 {
 			exited = true
