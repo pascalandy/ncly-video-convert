@@ -63,7 +63,7 @@ A warning never changes the exit code.
 
 HandBrake 1.7.2 through 1.9.x write conversion time as `creation_time`; from 1.10 it copies a source timestamp when one exists. This version-dependent container metadata does not define media determinism. No new HandBrake minimum is required.
 
-HandBrake must support the built-in preset. Availability is checked without parsing its version because distribution builds can print a source revision instead of a release number. The destination filesystem must support hard links for publication without overwrite consent. Dry run decodes only what the scan reads, and reserves no destination. HandBrake also exits 2 for an unknown preset, so the scan carries no preset, and an encode that exits 2 stays `RUNTIME`. A broken HandBrake install that cannot load its built-in presets exits 2 on the scan too, so it reports `VIDEO_CONVERT_UNREADABLE` for any input; the command does not parse HandBrake's text to tell the two apart. Cleanup handles ordinary errors, timeouts, Ctrl-C, and SIGTERM; SIGKILL, power loss, and filesystem refusal can prevent any process from cleaning temporary files. A scenario also checks a worker that ignores SIGTERM: the SDK force-stops it and ordinary cleanup removes staging. An external SIGKILL during cleanup can still interrupt that cleanup. Such temporary data is never published as the output. HandBrake inherits ordinary environment variables under the SDK's environment rules. The command discards HandBrake's stdout during the encode, where HandBrake prints encode progress, so the SDK's capture limit does not apply to it. A GPU encoder does not give the same file from run to run. Quick Sync decodes nothing, since its decoding stopped HandBrake with exit 3 on the fixture. On om1, `x265_10bit` was about 2.7 times slower than `x264` on the CPU, so `--codec h265` is slow on a machine without a GPU encoder. When a linear gain would pass the true peak, `loudnorm` compresses the loudness range instead.
+HandBrake must support the built-in preset. Availability is checked without parsing its version because distribution builds can print a source revision instead of a release number. The destination filesystem must support hard links for publication without overwrite consent. Dry run decodes only what the scan reads, and reserves no destination. HandBrake also exits 2 for an unknown preset, so the scan carries no preset, and an encode that exits 2 stays `RUNTIME`. A broken HandBrake install that cannot load its built-in presets exits 2 on the scan too, so it reports `VIDEO_CONVERT_UNREADABLE` for any input; the command does not parse HandBrake's text to tell the two apart. Cleanup handles ordinary errors, timeouts, Ctrl-C, and SIGTERM; SIGKILL, power loss, and filesystem refusal can prevent any process from cleaning temporary files. The public `ncly` path currently leaves staging when a worker ignores SIGTERM through the cleanup budget. This is an open owner-A defect, [nicely#468](https://github.com/pascalandy/nicely/issues/468), rather than an accepted cleanup loss; the resistant-worker scenario remains failing until the SDK fix ships. An external SIGKILL during cleanup can still interrupt that cleanup. Such temporary data is never published as the output. HandBrake inherits ordinary environment variables under the SDK's environment rules. The command discards HandBrake's stdout during the encode, where HandBrake prints encode progress, so the SDK's capture limit does not apply to it. A GPU encoder does not give the same file from run to run. Quick Sync decodes nothing, since its decoding stopped HandBrake with exit 3 on the fixture. On om1, `x265_10bit` was about 2.7 times slower than `x264` on the CPU, so `--codec h265` is slow on a machine without a GPU encoder. When a linear gain would pass the true peak, `loudnorm` compresses the loudness range instead.
 
 ## Acceptance
 
@@ -77,7 +77,6 @@ The real input is the fixture `IMG_1642.MOV` of the [fixture registry](https://g
 - `old-handbrake`: A CLI without metadata-stripping support still converts successfully under the unchanged default policy
 - `publication-cases`: Existing-output, input-link and temporary-path cases construct their preconditions and independently check preserved or published content
 - `determinism`: Without normalization, repeated conversions keep frame count, duration and audio packet hashes; video SSIM is at least 0.999 for CPU encoders and 0.99 for GPU encoders, independently of container timestamps
-- `cleanup-limits`: Ordinary success, failure and handled signals leave no staging when the filesystem cooperates; the existing runtime constraints bound cleanup
 - `publication-pending`: A dry run lists `publication.link` without force and `publication.rename` with force in `pending_checks`
 - `metadata-retained`: The acceptance fixtures demonstrate possible retention of descriptive metadata, without promising that every input tag survives
 
@@ -105,7 +104,7 @@ Each family names the criteria that its accepted and refused inputs prove. Real 
 | Complete private staging | Output: Temporary file | `duration`, `publication-cases` | `encode-failed`, `publish-failed` |
 | Publication capability is pending | Other: Dry run | `publication-pending` | `publish-failed` |
 | Work has one deadline | Input: Very large; Input: Large expansion; Interruption: Timeout | `duration` | `bad-timeout`, `scan-failed`, `encode-failed` |
-| Stop and cleanup | Interruption: SIGINT or SIGTERM during the work | `duration`, `cleanup-limits` | `interrupted`, `terminated` |
+| Stop and cleanup | Interruption: SIGINT or SIGTERM during the work | `duration` | `interrupted`, `terminated` |
 | Paths stay one argument | File name: Spaces; File name: Leading dash; File name: Shell characters | `duration` | `bad-input` |
 | Display orientation | Output: Loses data that changes the meaning | `orientation` | `still-image` |
 | Display declarations | Output: Keeps data that a reader needs | `orientation`, `metadata-retained` | None |
@@ -124,4 +123,6 @@ Every obligation is exercised by `predicts`, `appears`, and Linux `without` chec
 
 ## Open lines
 
-None. The generic cases above are covered by the declared families and the scenarios of this build.
+| ID | Command | Part | Case | Code |
+|---|---|---|---|---|
+| `cleanup-limits` | `ncly video convert` | Acceptance | Ordinary success, failure and handled signals leave no staging when the filesystem cooperates, including a worker that ignores the stop signal. The public resistant-worker scenario fails on SDK v0.26.0; [nicely#468](https://github.com/pascalandy/nicely/issues/468) must ship before this line is proven | None |

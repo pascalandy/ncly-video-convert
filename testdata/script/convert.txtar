@@ -109,7 +109,6 @@ env STUB=hang
 exits 1 ncly video convert timeout.mov --timeout 100ms
 stderr '"code":"RUNTIME"'
 ! exists timeout.converted.mp4
-# spec: cleanup-limits
 exec sh -c 'for p in .ncly-video-convert-* clips/.ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
 
 # The scan's time counts against --timeout, and the encode gets the rest, yet
