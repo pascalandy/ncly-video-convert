@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "confirmed_at": "2026-11-03T20:16:21Z",
-  "base_commit": "7c17b027e8287503368c49f5c8e2730941095ede",
+  "confirmed_at": "2026-11-03T20:26:00Z",
+  "base_commit": "9a9b27d3063f1d7383a3c0e4832154e7261b12b0",
   "sdk_version": "v0.26.0",
   "inputs": {
     "cmd/ncly-video-convert/main.go": "049f07b92ebc16bb40aeb7dae10036706f5ce5a568034493dfdbda58025a9822",
@@ -33,7 +33,7 @@
     "verification/publication/Input.cfg": "7ccb26fd6c2a549e1e52bd69902cc6075a2f45a60f4bce1933ec748d05931fd2",
     "verification/publication/Kill.cfg": "0d49708dcb103eaea11d05f632741ca4cbcfae748be9a4e46df4d84eec79c3d5",
     "verification/publication/Partial.cfg": "bca3df6439adb85cdb8c1a3ce48ea00c97b190b4ebf87c600eedc3bb00a357cc",
-    "verification/publication/Publication.tla": "e45026784cc162b35d5c16ac57379b92766a322c45138f846ead95eaf819bb44",
+    "verification/publication/Publication.tla": "011cb3582699b43323ed87a6990891ed3a99f003fefbeb93a3071d102b47f37c",
     "verification/publication/Replace.cfg": "19614c1242c967fa6b551544d59d796c9c0d1729d46fbbac3ea51c31a27faa03",
     "verification/publication/Safety.cfg": "015e80c5f1c8f419dc006ee53940c683ac90ad7acd9517f581757888a9c13280",
     "verification/publication/Signal.cfg": "fa94fdf0345be86e03f45fa0f57f79bbc4482151bf52636c68c82994be2f01e8",

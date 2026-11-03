@@ -160,7 +160,7 @@ Decide(i) ==
   /\ UNCHANGED <<stage, force, signal, committed, public, input,
                  unauthorized, cleanupRefused>>
 
-(* V/spec.md, Limits: SIGKILL prevents deferred cleanup. N/sdk/extension/handle.go:
+(* V/spec.md, Runtime constraints: SIGKILL prevents deferred cleanup. N/sdk/extension/handle.go:
    57-58 also documents host killing an extension after its cleanup budget. *)
 HardKill(i) ==
   /\ AllowKill /\ pc[i] \notin {"done", "killed"}
