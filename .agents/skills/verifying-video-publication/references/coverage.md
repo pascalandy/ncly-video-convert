@@ -1,6 +1,6 @@
 # Coverage record
 
-Correspondence was confirmed against ncly-video-convert `db5f124e8033dfc2d3af2c77c592c36431817188` and Nicely SDK `v0.26.0`
+Correspondence was confirmed against ncly-video-convert `7c17b027e8287503368c49f5c8e2730941095ede` and Nicely SDK `v0.26.0`
 Advance these references only after reviewing the mapped operations
 `verification/publication/record.json` binds the exact source bytes and tool pins from the completed run
 `internal/publication/record.go` defines the complete input inventory

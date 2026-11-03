@@ -1,19 +1,19 @@
 {
-  "version": 1,
-  "confirmed_at": "2026-11-03T19:40:11Z",
-  "source_commit": "db5f124e8033dfc2d3af2c77c592c36431817188",
+  "version": 2,
+  "confirmed_at": "2026-11-03T20:16:21Z",
+  "base_commit": "7c17b027e8287503368c49f5c8e2730941095ede",
   "sdk_version": "v0.26.0",
   "inputs": {
     "cmd/ncly-video-convert/main.go": "049f07b92ebc16bb40aeb7dae10036706f5ce5a568034493dfdbda58025a9822",
-    "convert.go": "8922fe3f88659aff8b85ada3548ffd2a89b399236140e7c662751b7762e6e7d9",
+    "convert.go": "123910bc3a7acf15312946478d6c828fdd5f6bf790321a4694383e3438a60e1a",
     "convert_test.go": "636396706878f2dd7662a86651a282f5848b00777d8598864b86192cc3d74e25",
     "extension.go": "03421d4be67a59a07e746d9533c8496a0b6564f3bff1fe88355318d6e5e359e5",
     "extension_test.go": "1722c49c29306bd7725c8b9ba8b60250207972379b6f014f32ce586c19cd5e37",
     "go.mod": "71426759a1eae8e2fc7c2a70e87913b7f4e1ec6b9e9501c76f31d5588897f521",
     "go.sum": "86ad6122713c442f87a1bd160bd02435e18caa154499b82785f8d208ef0867b9",
-    "internal/publication/record.go": "5fa4b2bff757d7f46513f2e58a1633d9e0af0a8c24f3b898a8e6265ec1cf51eb",
+    "internal/publication/record.go": "d5b4a96c09972e47c2b5008fbbb1003fec32e01a4d3aeddc9c5db619ddb20203",
     "internal/verify-publication/main.go": "46957df34f00a9107b81b7ca33224ebfdb7041cb348e8cad19433549d2229494",
-    "internal/verify-publication/verify.go": "9f49c61499b8ef3e34da6fc496fddae93de64ae0f0d10e207b1403c445055b20",
+    "internal/verify-publication/verify.go": "7ca7ed7dce12a7e8c6973e6fab15f059d5f54df242453fadc87853e7e04fe2ed",
     "justfile": "42bb836cadd01f7e54a4162159716779f88119ffcfe7134783b48b699a97231e",
     "locales/en.toml": "babc5c8ec03e4bec31b2389065348c606ca8281addb1c38d2a4b1a9a34f0b37f",
     "manifest.toml": "872eb4981794237b5ed28135d7525dad47e7f5a2f76aa37056bc5cf750bc63a9",
@@ -33,7 +33,7 @@
     "verification/publication/Input.cfg": "7ccb26fd6c2a549e1e52bd69902cc6075a2f45a60f4bce1933ec748d05931fd2",
     "verification/publication/Kill.cfg": "0d49708dcb103eaea11d05f632741ca4cbcfae748be9a4e46df4d84eec79c3d5",
     "verification/publication/Partial.cfg": "bca3df6439adb85cdb8c1a3ce48ea00c97b190b4ebf87c600eedc3bb00a357cc",
-    "verification/publication/Publication.tla": "bfceb5ccc41beeae86117962b18eb801a74d829d5f6f2c54b1f7eb9187213eb2",
+    "verification/publication/Publication.tla": "e45026784cc162b35d5c16ac57379b92766a322c45138f846ead95eaf819bb44",
     "verification/publication/Replace.cfg": "19614c1242c967fa6b551544d59d796c9c0d1729d46fbbac3ea51c31a27faa03",
     "verification/publication/Safety.cfg": "015e80c5f1c8f419dc006ee53940c683ac90ad7acd9517f581757888a9c13280",
     "verification/publication/Signal.cfg": "fa94fdf0345be86e03f45fa0f57f79bbc4482151bf52636c68c82994be2f01e8",
@@ -42,52 +42,6 @@
     "verification/tlc.json": "06eab2f3af3a50e2883d9176a8b396faf776b95ac277e315ef399fb35b14dead"
   },
   "results": [
-    {
-      "name": "Safety",
-      "exit": 0,
-      "distinct": 21937,
-      "depth": 25
-    },
-    {
-      "name": "Partial",
-      "exit": 12,
-      "violation": "CompletePublic"
-    },
-    {
-      "name": "Replace",
-      "exit": 12,
-      "violation": "Consent"
-    },
-    {
-      "name": "Input",
-      "exit": 12,
-      "violation": "InputPreserved"
-    },
-    {
-      "name": "Signal",
-      "exit": 12,
-      "violation": "SignalMeansNoCommit"
-    },
-    {
-      "name": "SignalBeforeCommit",
-      "exit": 12,
-      "violation": "NoCanceledCommit"
-    },
-    {
-      "name": "SignalAfterCommit",
-      "exit": 12,
-      "violation": "SignalMeansNoCommit"
-    },
-    {
-      "name": "Kill",
-      "exit": 12,
-      "violation": "NoStageAfterExit"
-    },
-    {
-      "name": "CleanupRefusal",
-      "exit": 12,
-      "violation": "NoStageAfterExit"
-    },
     {
       "name": "probe",
       "exit": 0
