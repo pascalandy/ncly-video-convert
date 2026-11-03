@@ -69,7 +69,6 @@ ncly-video-convert 'clips/one clip.mov' --force
 stdout '"size_bytes":8'
 cmp 'clips/one clip.converted.mp4' expected.mp4
 
-# spec: cleanup-limits
 # Failure after writing partial data preserves the previous complete output.
 # An encode that exits 2 stays RUNTIME, unlike a scan that exits 2.
 # spec: encode-failed
@@ -110,6 +109,7 @@ env STUB=hang
 exits 1 ncly video convert timeout.mov --timeout 100ms
 stderr '"code":"RUNTIME"'
 ! exists timeout.converted.mp4
+# spec: cleanup-limits
 exec sh -c 'for p in .ncly-video-convert-* clips/.ncly-video-convert-*; do test ! -e "$p" || exit 1; done'
 
 # The scan's time counts against --timeout, and the encode gets the rest, yet

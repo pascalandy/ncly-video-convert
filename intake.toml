@@ -87,3 +87,10 @@ statement = "HandBrake's --no-metadata option starts at 1.10.0. Older CLI versio
 source = "https://github.com/HandBrake/HandBrake/blob/1.7.2/test/test.c and https://github.com/HandBrake/HandBrake/blob/1.10.0/test/test.c"
 revision = "1.7.2 and 1.10.0"
 read = "main option-parse cleanup and ParseOptions: no no-metadata entry in 1.7.2, new entry in 1.10.0"
+
+[[facts]]
+kind = "sourced"
+statement = "HandBrake 1.7.2 to 1.9.x always write conversion time as creation_time. From 1.10, a source CreationTime is passed through when present. Stream determinism therefore cannot promise preservation of container timestamps across all supported versions."
+source = "https://github.com/HandBrake/HandBrake/blob/1.7.2/libhb/muxavformat.c and https://github.com/HandBrake/HandBrake/blob/1.10.0/libhb/muxavformat.c"
+revision = "1.7.2 and 1.10.0"
+read = "MP4 creation_time assignment in hb_mux_avformat_init and CreationTime metadata mapping"

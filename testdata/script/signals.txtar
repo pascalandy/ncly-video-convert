@@ -10,6 +10,7 @@ signal INT $QA_MARKER ncly video convert clip.mov --force --dry-run
 ! stdout .
 cmp clip.mov clip.mov.before
 cmp clip.converted.mp4 previous.mp4
+# spec: cleanup-limits
 exec sh bin/assert-invariants
 
 # spec: terminated
@@ -19,6 +20,7 @@ signal TERM $QA_MARKER ncly video convert clip.mov --force --dry-run
 ! stdout .
 cmp clip.mov clip.mov.before
 cmp clip.converted.mp4 previous.mp4
+# spec: cleanup-limits
 exec sh bin/assert-invariants
 
 # spec: interrupted
@@ -29,10 +31,24 @@ signal INT $QA_MARKER ncly video convert new.mov
 ! stdout .
 cmp new.mov new.mov.before
 ! exists new.converted.mp4
+# spec: cleanup-limits
 exec sh bin/assert-invariants
 
 # spec: terminated
 env QA_MARKER=started-TERM-encode
+survives clip.mov clip.converted.mp4
+signal TERM $QA_MARKER ncly video convert clip.mov --force
+! stdout .
+cmp clip.mov clip.mov.before
+cmp clip.converted.mp4 previous.mp4
+# spec: cleanup-limits
+exec sh bin/assert-invariants
+
+# A worker that ignores TERM is force-stopped by the SDK; ordinary staging
+# cleanup still runs before the host exits.
+# spec: terminated cleanup-limits
+env QA_PHASE=resistant
+env QA_MARKER=started-TERM-resistant
 survives clip.mov clip.converted.mp4
 signal TERM $QA_MARKER ncly video convert clip.mov --force
 ! stdout .
@@ -72,6 +88,7 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 echo partial > "$output"
+if [ "$QA_PHASE" = resistant ]; then trap '' INT TERM; fi
 : > "$WORK/$QA_MARKER"
 exec sleep 30
 -- bin/assert-invariants --

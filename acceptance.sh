@@ -47,16 +47,19 @@ if [[ -n "$fixture" ]]; then
 	cp "$fixture" "$work/"
 	input="$work/${fixture##*/}"
 else
-	# A fixed creation_time keeps the output the same from run to run, since
-	# HandBrake writes the clock in its place.
+	# HandBrake 1.10+ can preserve this fixed source timestamp. Older
+	# supported versions write their clock; stream comparisons below tolerate it.
 	ffmpeg -nostdin -v error -f lavfi -i testsrc2=size=1280x720:rate=30 -f lavfi -i sine=frequency=440:sample_rate=48000 \
 		-t 4 -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest "$scratch/flat.mp4"
-	ffmpeg -nostdin -v error -display_rotation 180 -i "$scratch/flat.mp4" -c copy -metadata creation_time=2026-01-01T00:00:00Z "$work/clip.mov"
+	ffmpeg -nostdin -v error -display_rotation 180 -i "$scratch/flat.mp4" -c copy -metadata artist="Nicely acceptance" -metadata date=2026-01-01T00:00:00Z -metadata creation_time=2026-01-01T00:00:00Z "$work/clip.mov"
 	input="$work/clip.mov"
 fi
 # spec: publication-pending
 (cd "$work" && ncly "${command[@]}" "$input" --dry-run --json --no-input) >"$scratch/plan" 2>"$scratch/stderr" || die "the dry run failed: $(cat "$scratch/stderr")"
-grep -qF '"publication.link"' "$scratch/plan" || die 'the dry run omitted publication.link from pending_checks'
+grep -qF '"pending_checks":["video_decode","publication.link"]' "$scratch/plan" || die 'the dry run omitted publication.link from pending_checks'
+grep -qF '"overwrite":false' "$scratch/plan" || die 'the create dry run changed overwrite consent'
+planned="$(sed -n 's/.*"output":"\([^"]*\)".*/\1/p' "$scratch/plan")"
+[[ -n "$planned" && ! -e "$planned" ]] || die 'the create dry run published an output'
 status=0
 (cd "$work" && ncly "${command[@]}" "$input" --json --no-input) >"$scratch/answer" 2>"$scratch/stderr" || status=$?
 cat "$scratch/answer"
@@ -184,8 +187,11 @@ else
 fi
 # --codec h265 gives H.265 Main 10, with the hvc1 tag that Apple's players need.
 # spec: publication-pending
+force_before="$(sum "$output")"
 (cd "$work" && ncly "${command[@]}" "$input" --codec h265 --force --dry-run --json --no-input) >"$scratch/plan" 2>"$scratch/stderr" || die "the h265 dry run failed"
-grep -qF '"publication.rename"' "$scratch/plan" || die 'the force dry run omitted publication.rename from pending_checks'
+grep -qF '"pending_checks":["video_decode","publication.rename"]' "$scratch/plan" || die 'the force dry run omitted publication.rename from pending_checks'
+grep -qF '"overwrite":true' "$scratch/plan" || die 'the force dry run lost overwrite consent'
+[[ "$(sum "$output")" == "$force_before" ]] || die 'the force dry run changed the existing output'
 # spec: hevc-output
 (cd "$work" && ncly "${command[@]}" "$input" --codec h265 --force --json --no-input) >"$scratch/answer" 2>"$scratch/stderr" ||
 	die "the h265 run failed: $(cat "$scratch/stderr")"

@@ -61,7 +61,9 @@ A warning never changes the exit code.
 
 ## Runtime constraints
 
-HandBrake must support the built-in preset. Availability is checked without parsing its version because distribution builds can print a source revision instead of a release number. The destination filesystem must support hard links for publication without overwrite consent. Dry run decodes only what the scan reads, and reserves no destination. HandBrake also exits 2 for an unknown preset, so the scan carries no preset, and an encode that exits 2 stays `RUNTIME`. A broken HandBrake install that cannot load its built-in presets exits 2 on the scan too, so it reports `VIDEO_CONVERT_UNREADABLE` for any input; the command does not parse HandBrake's text to tell the two apart. Cleanup handles ordinary errors, timeouts, Ctrl-C, and SIGTERM; SIGKILL, power loss, and filesystem refusal can prevent any process from cleaning temporary files. So can a HandBrake that ignores a stop signal for the SDK's whole cleanup time, 15 seconds, since ncly then stops the extension too. Such temporary data is never published as the output. HandBrake inherits ordinary environment variables under the SDK's environment rules. The command discards HandBrake's stdout during the encode, where HandBrake prints encode progress, so the SDK's capture limit does not apply to it. A GPU encoder does not give the same file from run to run. Quick Sync decodes nothing, since its decoding stopped HandBrake with exit 3 on the fixture. On om1, `x265_10bit` was about 2.7 times slower than `x264` on the CPU, so `--codec h265` is slow on a machine without a GPU encoder. When a linear gain would pass the true peak, `loudnorm` compresses the loudness range instead.
+HandBrake 1.7.2 through 1.9.x write conversion time as `creation_time`; from 1.10 it copies a source timestamp when one exists. This version-dependent container metadata does not define media determinism. No new HandBrake minimum is required.
+
+HandBrake must support the built-in preset. Availability is checked without parsing its version because distribution builds can print a source revision instead of a release number. The destination filesystem must support hard links for publication without overwrite consent. Dry run decodes only what the scan reads, and reserves no destination. HandBrake also exits 2 for an unknown preset, so the scan carries no preset, and an encode that exits 2 stays `RUNTIME`. A broken HandBrake install that cannot load its built-in presets exits 2 on the scan too, so it reports `VIDEO_CONVERT_UNREADABLE` for any input; the command does not parse HandBrake's text to tell the two apart. Cleanup handles ordinary errors, timeouts, Ctrl-C, and SIGTERM; SIGKILL, power loss, and filesystem refusal can prevent any process from cleaning temporary files. A scenario also checks a worker that ignores SIGTERM: the SDK force-stops it and ordinary cleanup removes staging. An external SIGKILL during cleanup can still interrupt that cleanup. Such temporary data is never published as the output. HandBrake inherits ordinary environment variables under the SDK's environment rules. The command discards HandBrake's stdout during the encode, where HandBrake prints encode progress, so the SDK's capture limit does not apply to it. A GPU encoder does not give the same file from run to run. Quick Sync decodes nothing, since its decoding stopped HandBrake with exit 3 on the fixture. On om1, `x265_10bit` was about 2.7 times slower than `x264` on the CPU, so `--codec h265` is slow on a machine without a GPU encoder. When a linear gain would pass the true peak, `loudnorm` compresses the loudness range instead.
 
 ## Acceptance
 
@@ -74,10 +76,9 @@ The real input is the fixture `IMG_1642.MOV` of the [fixture registry](https://g
 
 - `old-handbrake`: A CLI without metadata-stripping support still converts successfully under the unchanged default policy
 - `publication-cases`: Existing-output, input-link and temporary-path cases construct their preconditions and independently check preserved or published content
-- `determinism`: Without normalization, repeated conversions retain a fixed source capture timestamp across different clock times
+- `determinism`: Without normalization, repeated conversions keep frame count, duration and audio packet hashes; video SSIM is at least 0.999 for CPU encoders and 0.99 for GPU encoders, independently of container timestamps
 - `cleanup-limits`: Ordinary success, failure and handled signals leave no staging when the filesystem cooperates; the existing runtime constraints bound cleanup
 - `publication-pending`: A dry run lists `publication.link` without force and `publication.rename` with force in `pending_checks`
-- `handbrake-compat`: The default conversion works with a HandBrake CLI whose help predates the metadata-stripping option
 - `metadata-retained`: The acceptance fixtures demonstrate possible retention of descriptive metadata, without promising that every input tag survives
 
 The domain refuses these inputs:
@@ -96,7 +97,7 @@ Each family names the criteria that its accepted and refused inputs prove. Real 
 | Complete video title | Input: Empty; Input: Truncated; Input: Of the wrong type | `duration` | `no-video-title`, `still-image`, `scan-failed` |
 | Codec and encoder | Intake: H.264, H.265, GPU selection and CPU fallback | `hevc-output`, `determinism` | `bad-codec`, `encode-failed` |
 | Audio normalization | Intake: no audio, silence, measured loudness and AAC | `loudness` | `normalize-failed`, `no-ffmpeg` |
-| Tools installed | Other: Missing program; pre-1.10 CLI compatibility | `duration`, `handbrake-compat`, `old-handbrake` | `no-handbrake`, `no-ffmpeg` |
+| Tools installed | Other: Missing program; pre-1.10 CLI compatibility | `duration`, `old-handbrake` | `no-handbrake`, `no-ffmpeg` |
 | Destination access | Input and output folder access | `duration` | `folder-access`, `unsafe-output` |
 | Existing destination and consent | Output: Exists, without --force | `duration` | `output-exists` |
 | Output cannot alias the input | Output: Is a link to the input | `duration` | `unsafe-output` |
@@ -106,7 +107,7 @@ Each family names the criteria that its accepted and refused inputs prove. Real 
 | Work has one deadline | Input: Very large; Input: Large expansion; Interruption: Timeout | `duration` | `bad-timeout`, `scan-failed`, `encode-failed` |
 | Stop and cleanup | Interruption: SIGINT or SIGTERM during the work | `duration`, `cleanup-limits` | `interrupted`, `terminated` |
 | Paths stay one argument | File name: Spaces; File name: Leading dash; File name: Shell characters | `duration` | `bad-input` |
-| Display orientation | Output: Loses data that changes the meaning | `orientation` | None |
+| Display orientation | Output: Loses data that changes the meaning | `orientation` | `still-image` |
 | Display declarations | Output: Keeps data that a reader needs | `orientation`, `metadata-retained` | None |
 | Descriptive metadata retained by policy | Output: Keeps private data of the input | `metadata-retained`, `private-metadata` | None |
 

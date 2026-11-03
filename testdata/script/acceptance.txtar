@@ -9,16 +9,20 @@ ncly video convert clip.mov --dry-run --json
 ncly video convert clip.mov --json
 # This bad variant keeps the correctly sized pixels and adds a wrong matrix.
 exec ffmpeg -nostdin -v error -display_rotation 180 -i clip.converted.mp4 -c copy residual-rotation.mp4
-reads -case 'Loses data that changes the meaning' clip.converted.mp4 reference residual-rotation.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames:stream_side_data=rotation -count_frames -of default=noprint_wrappers=1
+exec ffmpeg -nostdin -v error -i clip.converted.mp4 -vf hflip,vflip -c:v libx264 -an upside-down.mp4
+reads -case 'Loses data that changes the meaning' clip.converted.mp4 upright-reference upside-down.mp4 sh upright.sh
+reads clip.converted.mp4 upright-reference residual-rotation.mp4 sh upright.sh
 reads clip.converted.mp4 author-reference flat.mp4 ffprobe -v error -show_entries format_tags=artist -of default=noprint_wrappers=1:nokey=1
 reads clip.converted.mp4 date-reference flat.mp4 ffprobe -v error -show_entries format_tags=date -of default=noprint_wrappers=1:nokey=1
 cp clip.converted.mp4 preserved.mp4
 
-# The output exists before either mode. Both refuse and preserve its bytes.
+# The old output is deliberately different from a fresh conversion.
 # spec: output-exists publication-cases
-protect clip.mov clip.converted.mp4
-refuses CONFIRMATION_REQUIRED ncly video convert clip.mov
-reads -case 'Exists, without --force' clip.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames:stream_side_data=rotation -count_frames -of default=noprint_wrappers=1
+cp clip.mov exists.mov
+cp flat.mp4 exists.converted.mp4
+protect exists.mov exists.converted.mp4
+refuses CONFIRMATION_REQUIRED ncly video convert exists.mov
+reads -case 'Exists, without --force' exists.converted.mp4 flat-reference preserved.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames:stream_side_data=rotation -count_frames -of default=noprint_wrappers=1
 
 # A real output symlink points to the input before the refusal. The reader
 # sees the preserved original dimensions and its unapplied display matrix.
@@ -37,7 +41,7 @@ symlink temporary.converted.mp4.tmp -> temporary.mov
 protect temporary.mov temporary.converted.mp4.tmp
 ncly video convert temporary.mov --dry-run --json
 keeps 0 ncly video convert temporary.mov --json
-reads -case 'Temporary file' temporary.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames:stream_side_data=rotation -count_frames -of default=noprint_wrappers=1
+reads -case 'Temporary file' temporary.converted.mp4.tmp original-reference preserved.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames:stream_side_data=rotation -count_frames -of default=noprint_wrappers=1
 
 # Each property has a reader and a bad variant that fails that property.
 # spec: duration
@@ -54,12 +58,14 @@ reads clip.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 
 reads clip.converted.mp4 author-reference flat.mp4 ffprobe -v error -show_entries format_tags=artist -of default=noprint_wrappers=1:nokey=1
 reads clip.converted.mp4 date-reference flat.mp4 ffprobe -v error -show_entries format_tags=date -of default=noprint_wrappers=1:nokey=1
 
+# Capture timestamps vary by HandBrake version. Repeated media content does not.
 # spec: determinism
-reads clip.converted.mp4 capture-reference flat.mp4 ffprobe -v error -show_entries format_tags=creation_time -of default=noprint_wrappers=1:nokey=1
+cp clip.converted.mp4 repeat-first.mp4
 exec sleep 1.1
 ncly video convert clip.mov --no-normalize --force --dry-run --json
 ncly video convert clip.mov --no-normalize --force --json
-reads clip.converted.mp4 capture-reference flat.mp4 ffprobe -v error -show_entries format_tags=creation_time -of default=noprint_wrappers=1:nokey=1
+cp stdout repeat-answer.json
+reads clip.converted.mp4 repeat-reference bad-duration.mp4 sh repeat.sh repeat-first.mp4 repeat-answer.json {}
 
 # spec: hevc-output
 ncly video convert clip.mov --codec h265 --force --dry-run --json
@@ -103,5 +109,33 @@ ffprobe -v error -f lavfi -i "amovie=$1,ebur128=metadata=1:peak=true" -show_entr
 /\.I=/ { i=$2; seen=1 }
 /\.true_peak=/ { if ($2 > peak) peak=$2 }
 END { if (!seen || i < -16.5 || i > -15.5 || peak <= 0 || 20*log(peak)/log(10) > -1) exit 1; print "48000 Hz, -16 LUFS within 0.5 LU, peak at most -1 dBTP" }'
--- capture-reference --
-2026-01-01T00:00:00.000000Z
+-- flat-reference --
+codec_name=h264
+width=160
+height=96
+nb_read_frames=120
+-- upright-reference --
+upright
+-- upright.sh --
+#!/bin/sh
+set -eu
+rot=$(ffprobe -v error -select_streams v:0 -show_entries stream_side_data=rotation -of default=noprint_wrappers=1:nokey=1 "$1")
+[ -z "$rot" ]
+ffprobe -v error -f lavfi -i "movie=$1,scale=96:160,format=gray[o];movie=flat.mp4,transpose=cclock,scale=96:160,format=gray[r];[o][r]ssim" -show_entries frame_tags=lavfi.ssim.All -of default=noprint_wrappers=1:nokey=1 | awk '{ s += $1; n++ } END { if (!n || s / n < 0.9) exit 1; print "upright" }'
+-- repeat-reference --
+same frames, duration and audio, close video
+-- repeat.sh --
+#!/bin/sh
+set -eu
+first=$1
+answer=$2
+second=$3
+frames() { ffprobe -v error -count_frames -select_streams v:0 -show_entries stream=nb_read_frames -of default=noprint_wrappers=1:nokey=1 "$1"; }
+duration() { ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$1"; }
+audio() { ffprobe -v error -select_streams a:0 -show_packets -show_entries packet=data_hash -show_data_hash sha256 -of compact=p=0 "$1"; }
+[ "$(frames "$first")" = "$(frames "$second")" ]
+[ "$(duration "$first")" = "$(duration "$second")" ]
+[ "$(audio "$first")" = "$(audio "$second")" ]
+encoder=$(sed -n 's/.*"encoder":"\([^"]*\)".*/\1/p' "$answer")
+case "$encoder" in vt_*|qsv_*) least=0.99 ;; x264|x265_10bit) least=0.999 ;; *) exit 1 ;; esac
+ffprobe -v error -f lavfi -i "movie=$first[a];movie=$second[b];[a][b]ssim" -show_entries frame_tags=lavfi.ssim.All -of default=noprint_wrappers=1:nokey=1 | awk -v least="$least" '{ s += $1; n++ } END { if (!n || s/n < least) exit 1; print "same frames, duration and audio, close video" }'
