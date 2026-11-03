@@ -14,7 +14,7 @@ By default, ffmpeg normalizes the audio after the encode, with the two passes of
 
 In both execution and dry run, the command validates a readable regular input, the destination and its folder's read, write and search access, HandBrakeCLI availability, a video title of more than one frame in the input, the encoder, and ffmpeg when it will normalize. One scan of the input, `HandBrakeCLI --input <file> --scan --json`, finds that title, its duration, and its audio tracks. It reads one title and decodes up to 10 preview frames, encodes nothing, and writes no file. HandBrake reads a still image as a title of one frame or less, such as 0 ticks of its 90 kHz clock for a PNG, and one frame at 25 fps for a JPEG, so the scan refuses such a title. A dry run starts only this scan, `HandBrakeCLI --help`, and `ffmpeg -version`. It creates no staging folder or output, and reports the planned paths, preset, codec, encoder, and normalization. Decoding of the whole video remains a pending check until execution. The dry run also reports the publication operation as pending, because checking access cannot prove filesystem support for a hard link or rename.
 
-Execution writes in a private staging folder beside the destination. Only a successful, nonempty regular output can be published. Without overwrite consent, an atomic hard link refuses a destination created during conversion. With consent, an atomic rename replaces the previous output after success. A final stat proves the published file exists. `--timeout`, two hours by default, bounds the scan, the encode, and the normalization together, and the message of a stop names that value. All return paths remove staging, after the SDK stops HandBrake or ffmpeg on a timeout or signal. A failed forced conversion preserves the previous output.
+Execution writes in a private staging folder beside the destination. Only a successful, nonempty regular output can be published. Without overwrite consent, an atomic hard link refuses a destination created during conversion. With consent, an atomic rename replaces the previous output after success. A final stat proves the published file exists. `--timeout`, two hours by default, bounds the scan, the encode, and the normalization together, and the message of a stop names that value. Every ordinary return attempts staging cleanup, after the SDK stops HandBrake or ffmpeg on a timeout or signal. Successful cleanup leaves no stage; a filesystem cleanup refusal is reported as RUNTIME. The runtime constraints below bound this guarantee. A failed forced conversion preserves the previous output.
 
 The input is opened only for reading. Its folder is resolved through the file system, so `..` after a symlink names the file that the kernel opens, and the output goes beside that file. An output that is a symlink, directory, special file, or the same file as the input is refused even with overwrite consent. The command never edits the existing output in place. HandBrake keeps its existing metadata behavior. Display declarations remain effective in the decoded video. The published file keeps the completed staged file's mode, as selected by HandBrake or ffmpeg under the caller's umask. Force mode replaces the old file and its mode together.
 
@@ -72,9 +72,13 @@ The real input is the fixture `IMG_1642.MOV` of the [fixture registry](https://g
 - `loudness`: The output keeps an audio track, at -16 LUFS within 0.5 LU, with a true peak of at most -1 dBTP, at 48 kHz
 - `hevc-output`: With `--codec h265`, the output is H.265 Main 10 with the `hvc1` tag, which Apple's players need
 
+- `old-handbrake`: A CLI without metadata-stripping support still converts successfully under the unchanged default policy
+- `publication-cases`: Existing-output, input-link and temporary-path cases construct their preconditions and independently check preserved or published content
+- `determinism`: Without normalization, repeated conversions retain a fixed source capture timestamp across different clock times
+- `cleanup-limits`: Ordinary success, failure and handled signals leave no staging when the filesystem cooperates; the existing runtime constraints bound cleanup
 - `publication-pending`: A dry run lists `publication.link` without force and `publication.rename` with force in `pending_checks`
 - `handbrake-compat`: The default conversion works with a HandBrake CLI whose help predates the metadata-stripping option
-- `metadata-retained`: Conversion retains the made input's author and capture date, with and without audio normalization
+- `metadata-retained`: The acceptance fixtures demonstrate possible retention of descriptive metadata, without promising that every input tag survives
 
 The domain refuses these inputs:
 
@@ -90,17 +94,17 @@ Each family names the criteria that its accepted and refused inputs prove. Real 
 |---|---|---|---|
 | Readable local regular input | Input: Unreadable | `duration` | `bad-input` |
 | Complete video title | Input: Empty; Input: Truncated; Input: Of the wrong type | `duration` | `no-video-title`, `still-image`, `scan-failed` |
-| Codec and encoder | Intake: H.264, H.265, GPU selection and CPU fallback | `hevc-output` | `bad-codec`, `encode-failed` |
+| Codec and encoder | Intake: H.264, H.265, GPU selection and CPU fallback | `hevc-output`, `determinism` | `bad-codec`, `encode-failed` |
 | Audio normalization | Intake: no audio, silence, measured loudness and AAC | `loudness` | `normalize-failed`, `no-ffmpeg` |
-| Tools installed | Other: Missing program; pre-1.10 CLI compatibility | `duration`, `handbrake-compat` | `no-handbrake`, `no-ffmpeg` |
+| Tools installed | Other: Missing program; pre-1.10 CLI compatibility | `duration`, `handbrake-compat`, `old-handbrake` | `no-handbrake`, `no-ffmpeg` |
 | Destination access | Input and output folder access | `duration` | `folder-access`, `unsafe-output` |
 | Existing destination and consent | Output: Exists, without --force | `duration` | `output-exists` |
 | Output cannot alias the input | Output: Is a link to the input | `duration` | `unsafe-output` |
 | Concurrent creation | Output: Appears during the run, without --force | `duration` | `output-arrives` |
-| Complete private staging | Output: Temporary file | `duration` | `encode-failed`, `publish-failed` |
+| Complete private staging | Output: Temporary file | `duration`, `publication-cases` | `encode-failed`, `publish-failed` |
 | Publication capability is pending | Other: Dry run | `publication-pending` | `publish-failed` |
 | Work has one deadline | Input: Very large; Input: Large expansion; Interruption: Timeout | `duration` | `bad-timeout`, `scan-failed`, `encode-failed` |
-| Stop and cleanup | Interruption: SIGINT or SIGTERM during the work | `duration` | `interrupted`, `terminated` |
+| Stop and cleanup | Interruption: SIGINT or SIGTERM during the work | `duration`, `cleanup-limits` | `interrupted`, `terminated` |
 | Paths stay one argument | File name: Spaces; File name: Leading dash; File name: Shell characters | `duration` | `bad-input` |
 | Display orientation | Output: Loses data that changes the meaning | `orientation` | None |
 | Display declarations | Output: Keeps data that a reader needs | `orientation`, `metadata-retained` | None |

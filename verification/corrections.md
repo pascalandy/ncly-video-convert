@@ -14,4 +14,6 @@ Each row records a correction found while adopting the verification loop of Nice
 
 | A1 | Accepted privacy limits cannot satisfy output-case coverage | Yes | A, kit | 2, evaluator | [nicely#462](https://github.com/pascalandy/nicely/issues/462) records the input, host, failure and required regression. The SDK limit is explicit in spec.md. The extension waits for the Nicely release and will update and rerun its gates |
 
+| C7 | Prose cleanup bounds did not fit the typed limit form | Yes | C, extension | 2, spec and scenarios | The main cleanup promise now states its existing filesystem and ordinary-return conditions; runtime constraints remain explicit, and cleanup has an acceptance line with success and refusal coverage. No new cleanup exception or consent is invented |
+
 The update's stale proof and unfilled template forms were expected adoption work, not product defects. Moving the TLC evaluator into `sdk/verification` adopts the existing owner A implementation. The accepted-limit evaluator defect is owned by A and follows D068 through nicely#462.

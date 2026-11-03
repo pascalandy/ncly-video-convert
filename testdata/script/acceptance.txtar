@@ -7,13 +7,15 @@ cp clip.mov bad.mp4
 # spec: orientation metadata-retained
 ncly video convert clip.mov --dry-run --json
 ncly video convert clip.mov --json
-reads -case 'Loses data that changes the meaning' clip.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames:stream_side_data=rotation -count_frames -of default=noprint_wrappers=1
+# This bad variant keeps the correctly sized pixels and adds a wrong matrix.
+exec ffmpeg -nostdin -v error -display_rotation 180 -i clip.converted.mp4 -c copy residual-rotation.mp4
+reads -case 'Loses data that changes the meaning' clip.converted.mp4 reference residual-rotation.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames:stream_side_data=rotation -count_frames -of default=noprint_wrappers=1
 reads clip.converted.mp4 author-reference flat.mp4 ffprobe -v error -show_entries format_tags=artist -of default=noprint_wrappers=1:nokey=1
 reads clip.converted.mp4 date-reference flat.mp4 ffprobe -v error -show_entries format_tags=date -of default=noprint_wrappers=1:nokey=1
 cp clip.converted.mp4 preserved.mp4
 
 # The output exists before either mode. Both refuse and preserve its bytes.
-# spec: output-exists
+# spec: output-exists publication-cases
 protect clip.mov clip.converted.mp4
 refuses CONFIRMATION_REQUIRED ncly video convert clip.mov
 reads -case 'Exists, without --force' clip.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames:stream_side_data=rotation -count_frames -of default=noprint_wrappers=1
@@ -51,6 +53,13 @@ ncly video convert clip.mov --no-normalize --force --json
 reads clip.converted.mp4 reference bad.mp4 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,nb_read_frames:stream_side_data=rotation -count_frames -of default=noprint_wrappers=1
 reads clip.converted.mp4 author-reference flat.mp4 ffprobe -v error -show_entries format_tags=artist -of default=noprint_wrappers=1:nokey=1
 reads clip.converted.mp4 date-reference flat.mp4 ffprobe -v error -show_entries format_tags=date -of default=noprint_wrappers=1:nokey=1
+
+# spec: determinism
+reads clip.converted.mp4 capture-reference flat.mp4 ffprobe -v error -show_entries format_tags=creation_time -of default=noprint_wrappers=1:nokey=1
+exec sleep 1.1
+ncly video convert clip.mov --no-normalize --force --dry-run --json
+ncly video convert clip.mov --no-normalize --force --json
+reads clip.converted.mp4 capture-reference flat.mp4 ffprobe -v error -show_entries format_tags=creation_time -of default=noprint_wrappers=1:nokey=1
 
 # spec: hevc-output
 ncly video convert clip.mov --codec h265 --force --dry-run --json
@@ -94,3 +103,5 @@ ffprobe -v error -f lavfi -i "amovie=$1,ebur128=metadata=1:peak=true" -show_entr
 /\.I=/ { i=$2; seen=1 }
 /\.true_peak=/ { if ($2 > peak) peak=$2 }
 END { if (!seen || i < -16.5 || i > -15.5 || peak <= 0 || 20*log(peak)/log(10) > -1) exit 1; print "48000 Hz, -16 LUFS within 0.5 LU, peak at most -1 dBTP" }'
+-- capture-reference --
+2026-01-01T00:00:00.000000Z

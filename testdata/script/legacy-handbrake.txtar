@@ -2,7 +2,7 @@
 # parser exits zero without writing output. The default policy must keep
 # working on that CLI rather than adding the optional stripping feature.
 chmod 755 bin/HandBrakeCLI
-# spec: handbrake-compat
+# spec: handbrake-compat old-handbrake
 ncly video convert clip.mov --dry-run --no-normalize --json
 ncly video convert clip.mov --no-normalize --json
 cmp clip.converted.mp4 complete.mp4

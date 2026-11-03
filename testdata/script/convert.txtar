@@ -69,6 +69,7 @@ ncly-video-convert 'clips/one clip.mov' --force
 stdout '"size_bytes":8'
 cmp 'clips/one clip.converted.mp4' expected.mp4
 
+# spec: cleanup-limits
 # Failure after writing partial data preserves the previous complete output.
 # An encode that exits 2 stays RUNTIME, unlike a scan that exits 2.
 # spec: encode-failed
