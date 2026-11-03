@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "confirmed_at": "2026-11-03T20:26:00Z",
-  "base_commit": "9a9b27d3063f1d7383a3c0e4832154e7261b12b0",
+  "confirmed_at": "2026-11-03T22:41:06Z",
+  "base_commit": "3947079d8eaccdb1d7bac6f5d87d79c873e74e03",
   "sdk_version": "v0.26.0",
   "inputs": {
     "cmd/ncly-video-convert/main.go": "049f07b92ebc16bb40aeb7dae10036706f5ce5a568034493dfdbda58025a9822",
@@ -11,9 +11,9 @@
     "extension_test.go": "1722c49c29306bd7725c8b9ba8b60250207972379b6f014f32ce586c19cd5e37",
     "go.mod": "71426759a1eae8e2fc7c2a70e87913b7f4e1ec6b9e9501c76f31d5588897f521",
     "go.sum": "86ad6122713c442f87a1bd160bd02435e18caa154499b82785f8d208ef0867b9",
-    "internal/publication/record.go": "d5b4a96c09972e47c2b5008fbbb1003fec32e01a4d3aeddc9c5db619ddb20203",
-    "internal/verify-publication/main.go": "46957df34f00a9107b81b7ca33224ebfdb7041cb348e8cad19433549d2229494",
-    "internal/verify-publication/verify.go": "7ca7ed7dce12a7e8c6973e6fab15f059d5f54df242453fadc87853e7e04fe2ed",
+    "internal/publication/record.go": "fe13b2772f6df114f7659a3261141faf942dd9762e0beab4a651b994c36d9455",
+    "internal/verify-publication/main.go": "e53470949543c658525cd1e1e05d27c7dd9d0c96d70e1135ff6b37f13afb9b3d",
+    "internal/verify-publication/verify.go": "b60e8af689d01b84d27ef8ae026f73914b12bf74d263bf52afd9ff4f1f9a52d8",
     "justfile": "42bb836cadd01f7e54a4162159716779f88119ffcfe7134783b48b699a97231e",
     "locales/en.toml": "babc5c8ec03e4bec31b2389065348c606ca8281addb1c38d2a4b1a9a34f0b37f",
     "manifest.toml": "872eb4981794237b5ed28135d7525dad47e7f5a2f76aa37056bc5cf750bc63a9",

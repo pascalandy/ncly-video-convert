@@ -19,7 +19,7 @@ const Directory = "verification/publication"
 const RecordPath = Directory + "/record.json"
 
 // Result is one executable publication probe or control. The SDK's separate
-// TLC record owns all nine model outcomes.
+// TLC record owns the model outcomes.
 type Result struct {
 	Name string `json:"name"`
 	Exit int    `json:"exit"`
@@ -118,7 +118,10 @@ func hashFile(inputs map[string]string, name, path string) error {
 // CheckRecord runs without Java. Any drift requires the complete proof again.
 func CheckRecord(root string) error {
 	if problems := verification.CheckRecord(root); len(problems) != 0 {
-		return fmt.Errorf("publication models: %s", strings.Join(problems, "; "))
+		detail := strings.ReplaceAll(strings.Join(problems, "; "),
+			"just verify-models, then commit "+verification.RecordFile,
+			"just verify-publication, then commit "+verification.RecordFile+" and "+RecordPath)
+		return fmt.Errorf("publication models: %s", detail)
 	}
 	inputs, version, err := Inputs(root)
 	if err != nil {

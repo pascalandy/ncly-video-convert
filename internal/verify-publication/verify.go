@@ -54,7 +54,7 @@ func verify() error {
 		return fmt.Errorf("source changed during snapshot: %v; run `just verify-publication` again", err)
 	}
 	// The SDK owns TLC acquisition, digest checking, execution and parsing.
-	// The extension keeps the same nine configurations and executable probes.
+	// verification/tlc.json declares the model configurations.
 	_, err = verification.Run(verification.Options{Root: r.tree, Dir: scratch, Env: r.env})
 	if err != nil {
 		return err
@@ -89,10 +89,10 @@ func verify() error {
 	if err != nil {
 		return err
 	}
+	// Publish both records only after all checks and restoration succeeded.
 	if err := platform.WriteFile(filepath.Join(root, verification.RecordFile), modelRecord, 0o644); err != nil {
 		return err
 	}
-	// Replace the old record only after every check and restoration succeeded.
 	return platform.WriteFile(filepath.Join(root, publication.RecordPath), append(data, '\n'), 0o644)
 }
 

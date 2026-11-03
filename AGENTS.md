@@ -54,8 +54,8 @@ After Copier creates the repository, run `go mod tidy` once, which writes `go.su
 - `just check`: every check. It runs `go mod tidy -diff`, `gofmt`, `go vet`, the analyzers of the pinned SDK, and `go test`, whose test kit installs the extension into scratch folders. With `verification/tlc.json`, it first reads the record of its TLA+ models
 - `just finish`: the exit of the loop. `finish-gate.md` in the pinned contract lists what it checks
 - `just records`: writes `## Intake` of `vision.md` from `intake.toml`, and `readiness.md` from `review.toml`, as `build-records.md` in the pinned contract says
-- `just verify-publication`: bounded publication model, Linux signal probes, and negative controls; refreshes the publication record
-- `just verify-models [jar]`: optional. It checks the TLA+ models of `verification/tlc.json` with the pinned TLC and the Java of mise, then writes the record that `just check` reads. `formal-models.md` in the pinned contract says how
+- `just verify-publication`: bounded publication model, Linux signal probes, and negative controls. It refreshes `verification/tlc-record.json` and `verification/publication/record.json`; commit both files
+- `just verify-models [jar]`: model-only recipe supplied by the template. Use `just verify-publication` here instead, because the publication record also binds the model inputs
 - `just scenario <name>`: runs the scenario `testdata/script/<name>.txtar`, such as the first scenario of round 1 at its commit
 - `just signoff`: runs `just finish` and `just check` on the committed SHA in a detached scratch worktree. It also runs the first failing run of `review.toml` again, at its commit. Then it writes a receipt outside the repository, and signs that exact SHA
 - `just install`: installs the extension into Nicely's extensions folder, in place of its previous install

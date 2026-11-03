@@ -7,11 +7,12 @@ import (
 	"os"
 
 	"github.com/pascalandy/ncly-video-convert/internal/publication"
+	"github.com/pascalandy/nicely/sdk/verification"
 )
 
 func main() {
 	if len(os.Args) == 2 && (os.Args[1] == "--help" || os.Args[1] == "-h") {
-		fmt.Println("Usage: go run ./internal/verify-publication\nRun on Linux from the repository root. Requires Go, Git, mise, and network for pinned tools.\nKeeps scratch logs under TMPDIR and writes verification/publication/record.json only after all checks pass.")
+		fmt.Printf("Usage: go run ./internal/verify-publication\nRun on Linux from the repository root. Requires Go, Git, mise, and network for pinned tools.\nKeeps scratch logs under TMPDIR. After all checks pass, writes %s and %s.\n", verification.RecordFile, publication.RecordPath)
 		return
 	}
 	var err error
@@ -24,5 +25,5 @@ func main() {
 		_ = json.NewEncoder(os.Stderr).Encode(map[string]any{"ok": false, "errors": []string{err.Error() + "; rerun `just verify-publication` after correcting the failure"}})
 		os.Exit(1)
 	}
-	_ = json.NewEncoder(os.Stdout).Encode(map[string]any{"ok": true, "file": publication.RecordPath})
+	_ = json.NewEncoder(os.Stdout).Encode(map[string]any{"ok": true, "file": publication.RecordPath, "tlc_file": verification.RecordFile})
 }

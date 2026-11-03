@@ -1,6 +1,6 @@
 # Adoption corrections
 
-Each row records a correction found while adopting the verification loop of Nicely [#427](https://github.com/pascalandy/nicely/issues/427). Owner and level follow D068. Gate times and session IDs belong in the pull request.
+Each row records a correction found while adopting the verification loop of Nicely [#427](https://github.com/pascalandy/nicely/issues/427). Owner and level follow [D068](https://github.com/pascalandy/nicely/blob/main/docs/north-star/decisions/D068-verification-map.md#move-a-correction). Gate times and session IDs belong in the pull request.
 
 | ID | Finding | Real defect | Owner | Level | Correction and proof |
 |---|---|---|---|---|---|
@@ -16,5 +16,6 @@ Each row records a correction found while adopting the verification loop of Nice
 | A2 | Resistant public path can leave staging before handler cleanup | Yes | A, core/SDK | 2, real host and direct control | [nicely#468](https://github.com/pascalandy/nicely/issues/468) records the intermittent public leak and the nested 15 s budgets. D068: batch 3 ships the fix with #462, then this extension updates and applies the baseline and closure criteria of the cleanup-limits Open line. No cleanup limit is accepted |
 | C9 | A lucky public cleanup pass could falsely close the SDK defect | Yes | C, extension | 2, regression oracle | Manic-2 extra-final measured 4/10 failures in the small-stage case. The resistant stub now creates 20,000 staging files. The cleanup-limits Open line holds the baseline and closure criteria |
 | C10 | Temporary-path case stopped reading its published output | Yes | C, extension | 2, independent reader | Keep the planted-link target read and restore a separate ffprobe read of temporary.converted.mp4 against its valid reference and original-input bad variant |
+| C12 | Proof instructions named only one of two required records | Yes | C, extension | 2, proof recovery | The skill, recipes and helper now name both records and the complete `just verify-publication` recipe. Its JSON reports both paths and stale-model hints use the complete recipe |
 
 The update's stale proof and unfilled template forms were expected adoption work, not product defects. Moving the TLC evaluator into `sdk/verification` adopts the existing owner A implementation. The accepted-limit evaluator defect is owned by A and follows D068 through nicely#462.

@@ -13,7 +13,7 @@ Copy this checklist and track completion:
 - [ ] Confirm the model still describes the changed code
 - [ ] Run the proof and its negative controls
 - [ ] Interpret every result
-- [ ] Commit the current record
+- [ ] Commit both current records
 
 1. Compare changed functions with the [coverage record](references/coverage.md) and comments in `verification/publication/Publication.tla`
    Confirm that context sampling, destination checks, and publication remain separate actions
@@ -23,8 +23,8 @@ Copy this checklist and track completion:
    If a tool is absent, follow its [installation instructions](references/tools.md)
 3. Run `just verify-publication` from the repository root
    The runner installs the pinned managed Java through `mise exec` and verifies the downloaded TLC jar's SHA-256
-   It copies the current tree to scratch, runs nine configurations, probes the executable, and tests a real-code mutation
-   Completion requires JSON with `"ok":true` and the record path
+   It copies the current tree to scratch, runs the configurations of `verification/tlc.json`, probes the executable, and tests a real-code mutation
+   Completion requires JSON with `"ok":true`, `file` naming `verification/publication/record.json`, and `tlc_file` naming `verification/tlc-record.json`
 4. Read every TLC result with the pstack `/statechart` skill
    Use its shortest path for each violation and its state transition chart for a pass
    If unavailable, read the action sequences in the retained logs and report the missing interpretation tool
@@ -38,7 +38,10 @@ Copy this checklist and track completion:
 6. After intended changes, update the model, configurations, probe, and coverage record together
    Advance the coverage synchronization commit only after checking every mapped action against that commit
    Run `just verify-publication` again, then `just check`
-   Commit `verification/publication/record.json` when both pass
+   Commit both `verification/tlc-record.json` and `verification/publication/record.json` when both pass
+
+Use `just verify-publication` instead of `just verify-models` in this repository
+It refreshes both records together; refreshing only the model record leaves the publication binding stale
 
 The normal gate needs no Java
 It rejects absent records and changes to covered source, SDK files, model, configurations, probe, runner, or tool pins
