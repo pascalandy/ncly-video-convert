@@ -1,6 +1,6 @@
-Commit: 125c101001944a9aa4291d6fa0700cfe2d9c208f
-Reviewer: GPT-6.1-Sol via Codex; CODEX_THREAD_ID=01a1a302-b36b-7983-be12-9f3ccc38b45f; independent reviewer who wrote none of the reviewed code
-Verdict: Needs work
+Commit: 1c8e0e8a6bf9e70f122945a55f569116375b2e0d
+Reviewer: GPT-6.1-Sol via Codex; CODEX_THREAD_ID=01a1a758-936e-7a61-9988-736f31049c78; independent post-update change and readiness reviewer who wrote none of the reviewed implementation
+Verdict: Ready with stated limits
 
 # Readiness review
 
@@ -11,92 +11,98 @@ Verdict: Needs work
 ### R1-F1 Metadata stripping breaks the supported older HandBrake install
 
 - **Severity**: `block`
-- **State**: `open`
+- **State**: `fixed`
 - **Spec**: `old-handbrake`
 - **Family**: Tools installed
-- **Evidence**: convert.go:334 unconditionally passes --no-metadata; chooseEncoder at lines 240-260 checks encoders but not that option. The Ubuntu job 126161508871 of run 41706044940 installs HandBrake 1.7.2+ds1-1build2, passes the dry run, then fails acceptance.txtar:9 with RUNTIME and no output. An independent isolated probe at this head reproduces dry-run exit 0 followed by run exit 1 when a shim omits this option from help and returns 0 without output on the option. The same made input converts with the host HandBrake. Raw commands and answers are in the readiness-round1 evidence copy.
+- **Commit**: 7c17b027e8287503368c49f5c8e2730941095ede
+- **Evidence**: Round 1's older-tool failure remains valid historical evidence. 129174b removes --no-metadata; 7c17b02 adds legacy-handbrake.txtar, whose old parser exits zero without output if that flag returns. The current Tools installed family pairs successful conversion with missing-tool refusals. Independent just check at the reviewed head passes these cases and the real made-media acceptance. Retained ubuntu-v0261-verify logs at 0777195 show full check, generated acceptance and full-fixture acceptance passing with HandBrake 1.7.2+ds1-1build2. All eight source bindings in v0261-tested-source.json match this reviewed tree.
 - **Command**: ncly video convert, run and dry run
-- **Consequence**: A previously supported installed tool cannot convert any video. The successful preview and the free-space hint misdirect the caller. Hosted Ubuntu checks fail.
+- **Consequence**: At round 1, a supported older tool could not convert video despite a successful preview, and the hosted Ubuntu acceptance failed. Final-candidate hosted checks remain pending.
 - **Owner**: Extension author
-- **Fix**: In round 2 apply the Head Chef's relayed v0.2.2 policy by removing --no-metadata and preserving existing metadata behavior. Prove conversion and preview on the supported older tool as well as the current tool. Add no minimum version or new CI pin. The policy has not been applied at this reviewed head.
+- **Fix**: Applied without a new HandBrake minimum or stripping flag. Metadata remains subject to the accepted private-metadata limit.
 
 ### R1-F2 Three Output acceptance labels lack their case preconditions
 
 - **Severity**: `block`
-- **State**: `open`
+- **State**: `fixed`
 - **Spec**: `publication-cases`
 - **Family**: Complete private staging
-- **Evidence**: testdata/script/acceptance.txtar:13-15 repeat the ordinary fresh conversion's ffprobe read for Exists, without --force; Is a link to the input; and Temporary file. No existing destination, output link, or planted temporary-path link precedes these reads. convert.txtar:58-63 and 165-174 exercise existing destinations and output links with stubs, but do not supply the required domain-reader acceptance cases; no scenario constructs the temporary-path case. Pinned generic-cases.md and acceptance-cases.md explicitly require a made domain file and independent check for each applicable Output case. Local just check passes, demonstrating that label coverage alone misses this gap.
+- **Commit**: 792fe980bce9548d2ec5c617a8905af5b0c8202e
+- **Evidence**: The current acceptance.txtar constructs a distinct existing MP4 before refusal, an output symlink to its input before refusal, and a predictable temporary-path symlink before conversion. Each case protects its files and independently reads preserved content against authored references and meaningful bad variants. c63cd5f also reads the separately published temporary-case output. Publication scenarios pair success with failed encode, refused link or rename, and concurrent destination creation. 792fe98 supplies the corresponding real-input preconditions in acceptance.sh. Independent just check at the reviewed head and the retained full-fixture logs pass.
 - **Command**: ncly video convert, output refusal and staging acceptance
-- **Consequence**: The coverage report counts three safety cases as proven without exercising their preconditions. Regressions in those cases can pass these acceptance reads. This finding does not claim that the current publication implementation writes through a link.
+- **Consequence**: At round 1, three safety cases counted as proven without their preconditions, allowing regressions to pass those readers. No implementation write through a link was established.
 - **Owner**: Extension author
-- **Fix**: Construct each named case before its public call. Independently read the preserved destination or input against an authored reference and a bad variant that represents that case's regression. Include accepted and refused inputs for the staging family, and retain the destination and input-link families' own meaningful checks.
+- **Fix**: Applied across the existing-destination, input-alias and private-staging families.
 
 ### R1-F3 No-normalize conversions replace the source capture time
 
 - **Severity**: `warn`
-- **State**: `open`
-- **Spec**: `determinism`
-- **Family**: Codec and encoder
-- **Evidence**: convert.go:334 adds --no-metadata. In an independent made-media probe, the source creation_time is 2026-01-01T00:00:00Z, but two x264 --no-normalize conversions at this head have creation_time values 2026-11-03T20:08:42Z and 2026-11-03T20:08:45Z and different SHA-256 values. A direct HandBrake control without this flag preserves the source creation_time. This contradicts qa.md:67's statement that HandBrake copies the source tag. A further public conversion with normalization has no creation_time tag, and the real-fixture default acceptance passes with matching checksums. Therefore a default macOS CPU checksum failure is not established by this review; the observed loss and clock-dependent files are on the no-normalize path.
+- **State**: `limit`
+- **Spec**: `private-metadata`
+- **Family**: Descriptive metadata can remain
+- **Evidence**: The observed round-1 no-normalize timestamp loss is not relabeled a passing preservation test. The Head Chef's accepted private-metadata limit promises neither retention nor removal of capture dates. spec.md and qa.md now distinguish container timestamps from media determinism and document the older HandBrake conversion-time behavior. acceptance.txtar compares repeated no-normalize frame counts, duration, audio packet hashes and video SSIM. acceptance.sh checks repeats in the default normalization mode. Both have independent readers; the made-media repeat has a shortened bad variant. Current check and retained om1 and Ubuntu real-fixture runs pass those media criteria. No default macOS CPU checksum failure is inferred.
 - **Command**: ncly video convert, repeated CPU conversions
-- **Consequence**: With --no-normalize the output loses the source capture timestamp and changes its file checksum between runs in different seconds, contrary to the QA account of timestamp preservation. The normalized default path must be judged separately.
+- **Consequence**: Capture dates and container checksums can vary by input, tool build and normalization. The accepted policy permits that variation while media determinism remains tested separately.
 - **Owner**: Extension author
-- **Fix**: Apply the approved metadata-preservation policy in round 2 and prove the declared capture-time and determinism behavior on repeated conversions. Reconcile QA and its executable check with the resulting behavior. Nothing outside this frozen head counts as a fix.
+- **Fix**: Closed by the explicitly accepted private-metadata limit, not by a universal timestamp-preservation claim.
 
 ### R1-F4 Real-input acceptance omits the private-metadata promise
 
 - **Severity**: `warn`
-- **State**: `open`
+- **State**: `limit`
 - **Spec**: `private-metadata`
-- **Family**: Display declarations and private metadata
-- **Evidence**: spec.md:69 promises that display metadata is applied while private author metadata is removed. acceptance.sh runs decode, orientation, duration, loudness, determinism, HEVC, and still-image checks, but never reads or rejects private metadata. Its made input has only a fixed creation_time, and its real-fixture branch adds no metadata assertion. The separate made-media scenario's Ana Lima check does not check the real fixture. AGENTS.md requires independent acceptance checks in acceptance.sh on the real input.
+- **Family**: Display declarations
+- **Evidence**: The accepted private-metadata row describes author, capture date, device and location retention, with both exact privacy Output bindings. Both applicable matrix rows name its ID. The two reads -case ... -limit private-metadata calls independently check upright displayed content and the complete retained input-artist reference. Their raw rotated-input and missing-artist bad variants fail. No text is promised absent by these cases, so no -private exemption is invented. Real acceptance reads actual source and target tags for each codec and permits zero matches; a normalized artist control proves possible retention when needed. Retained v0.26.1 om1 logs report 1/2 known values per codec; Ubuntu reports 0/2 and passes the control. C20's older universal-retention assertion remains failed. The same committed ffprobe error-73 control was swallowed before 0ce0867 and is rejected afterward, including the v0.26.1 replay.
 - **Command**: ncly video convert, real-input acceptance
-- **Consequence**: The real-input acceptance gate can pass when its output violates the current metadata promise. The announced metadata-preservation policy has no accepted-limit row at this head.
+- **Consequence**: Private metadata can remain in shared outputs. The accepted limit discloses this loss of privacy; real-input acceptance no longer promises universal stripping or retention.
 - **Owner**: Extension author
-- **Fix**: In round 2 apply the Head Chef's relayed privacy policy as an explicit accepted limit covering author, capture date, and GPS, and reconcile the real-input acceptance procedure with that declared policy. Keep this finding open until the author records the policy and a fresh reviewer assesses it. Do not claim that this head has already adopted the limit.
+- **Fix**: Closed under the Head Chef's accepted limit and the v0.26.1 accepted-limit protocol. Opt-in stripping remains issue #18.
 
 ### R1-F5 Real-input acceptance omits publication pending checks
 
 - **Severity**: `warn`
-- **State**: `open`
+- **State**: `fixed`
 - **Spec**: `publication-pending`
 - **Family**: Publication capability is pending
-- **Evidence**: spec.md:68 requires publication.link without force and publication.rename with force in dry-run pending_checks. acceptance.sh has no dry-run call and never checks pending_checks. publication.txtar proves both answers with a shell stub, and independent made-media probes at this head return both correct operations, but neither supplies the acceptance.sh check on the real input required by AGENTS.md.
+- **Commit**: 792fe980bce9548d2ec5c617a8905af5b0c8202e
+- **Evidence**: acceptance.sh now runs create and forced-replace previews before their writes. It checks exact video_decode plus publication.link or publication.rename, overwrite consent, absent create output, preserved replacement output and no stage. The planned path supplies the planted temporary-link case, and the published answer is independently checked. publication.txtar retains predicts for both modes and paired without-link and without-rename refusals. Independent just check at the reviewed head and the retained v0.26.1 real-fixture acceptance logs pass.
 - **Command**: ncly video convert --dry-run, with and without --force
-- **Consequence**: Real-input acceptance passes without verifying a required preview property. This is a missing gate, not an observed failure of the current dry-run answer.
+- **Consequence**: At round 1, real-input acceptance omitted a required preview property. The observed dry-run answers themselves were correct.
 - **Owner**: Extension author
-- **Fix**: On the real fixture run and inspect both dry-run modes before their corresponding writes. Assert the destination, overwrite choice, publication.link or publication.rename, and lack of dry-run effects. Retain a negative control that rejects an omitted or wrong operation.
+- **Fix**: Applied to real-input acceptance and retained public-boundary publication tests.
 
 ### R1-F6 The made-media orientation reader accepts a residual rotation
 
 - **Severity**: `warn`
-- **State**: `open`
+- **State**: `fixed`
 - **Spec**: `orientation`
 - **Family**: Display orientation
-- **Evidence**: The ffprobe reads at testdata/script/acceptance.txtar:10-15 request codec, coded dimensions, and decoded frame count, but no display side-data rotation and no displayed pixels. An independent probe copied a successful 96x160, 120-frame output and added a residual rotation of -180 degrees. The existing reader prints exactly the same reference for both files, while a displayed-frame comparison gives SSIM 0.120743. The current output is correctly oriented; the demonstrably wrong output passes this orientation reader.
+- **Commit**: 9a9b27d3063f1d7383a3c0e4832154e7261b12b0
+- **Evidence**: upright.sh refuses residual display rotation and compares decoded frames through ffprobe's independent lavfi reader against the authored cclock transpose of flat.mp4. acceptance.txtar supplies both a residual 180-degree matrix on correctly sized pixels and pixels flipped on both axes as separate bad variants. The correct rotated conversion passes and both bad variants are rejected by independent just check. The Display orientation family also retains the still-image refusal pair. Real-input acceptance compares displayed source and output pixels; its retained om1 and Ubuntu runs pass.
 - **Command**: ncly video convert, made-media orientation acceptance
-- **Consequence**: The required made-media check can accept a video displayed upside down, despite the orientation promise. The real-input SSIM check does not repair this scenario's incomplete oracle.
+- **Consequence**: At round 1, an upside-down output could pass the made-media reader despite the orientation promise. A separate real-input check did not close that scenario gap.
 - **Owner**: Extension author
-- **Fix**: Make the independent reference account for display rotation, using display side data or decoded displayed pixels. Include a bad variant with correctly sized pixels and a residual display matrix, and prove that the reader rejects it while accepting the correct conversion.
+- **Fix**: Applied with independent display-pixel and residual-matrix checks.
 
 ### R1-F7 Declared cleanup limits have no typed acceptance record
 
 - **Severity**: `warn`
-- **State**: `open`
+- **State**: `fixed`
 - **Spec**: `cleanup-limits`
 - **Family**: Stop and cleanup
-- **Evidence**: The first independent just finish run exits 1 and reports spec.md:57: this limit has no spec ID, no state limit, and no acceptance. The paragraph under ## Limits includes cleanup losses for SIGKILL, power loss, filesystem refusal, and a worker exceeding the SDK cleanup budget, together with other operating constraints. It provides neither the ID/State/Limit/Accepted table required by finish-gate.md nor the user's acceptance for those losses. The exact first output is preserved in finish-first.log; the spec was not modified.
+- **Commit**: 07771955fa419697498144867aa0d38ba6419d0c
+- **Evidence**: The original finish-first.log remains a failed round-1 result. The current spec separates Runtime constraints from typed accepted limits and proves cleanup-limits in Acceptance for supported hosts. The Stop and cleanup family pairs ordinary success with INT and TERM during preparation and encoding, including the unchanged 20,000-file resistant worker. Byte-identical f0dc93a/v0.26.0 and bfe783d/v0.26.1 cases respectively fail stage assertion 91 and pass. Current independent just check passes. All 45 publication input hashes match, including v0.26.1 core dispatch, non-test runner and process-tree sources; independent executable publication probes also pass. Source-candidate 7aae38d has ten H and ten installed P readings under the approved external driver, all clean. The older 4b2de72 baseline used H under the Go harness driver; these drivers are not identical. The same new extension still leaks on source-built old cores, expressly covered by the accepted core-minimum limit and nicely#484. Normal check accepts that compatibility limit without an Output binding. Final frozen-head om1 and Mini sets, hosted checks and exact-SHA signoff remain pending manual gates, not evidence claimed by this review.
 - **Command**: ncly video convert, declared cleanup guarantees and finish gate
-- **Consequence**: The readiness gate rejects this head, and no typed record distinguishes supported behavior from a loss that the user has accepted.
+- **Consequence**: Round 1 failed readiness because cleanup bounds lacked typed disposition. Supported-host cleanup is now proven; older-core enforcement remains an accepted compatibility limit and final-head release gates remain pending.
 - **Owner**: Extension author
-- **Fix**: Reconcile the prose Limits paragraph with the pinned contract. Give each actual accepted loss a stable spec ID, state limit, and the real user's acceptance. Put ordinary supported behavior in the applicable spec sections and prove it. Cover the cleanup family with accepted and refused cases. Do not fabricate consent or weaken the guarantees merely to make finish pass.
+- **Fix**: Applied through the v0.26.1 update, supported-host cleanup tests and explicit accepted core-minimum limit. D068 step 3 for minimum-version enforcement waits for a future Nicely release. Final host, hosted and signoff gates are not waived.
 
 ## Rounds
 
 | Round | Head | Change review | Change commits | Readiness review | Finish |
 |---|---|---|---|---|---|
-| 1 | 125c101001944a9aa4291d6fa0700cfe2d9c208f | GPT-6.1-Sol via Codex; CODEX_THREAD_ID=01a1a302-b36b-7983-be12-9f3ccc38b45f | 708ad0a0c58bfe99f1dd9764cd1bece2f4b6b16a..125c101001944a9aa4291d6fa0700cfe2d9c208f | GPT-6.1-Sol via Codex; CODEX_THREAD_ID=01a1a302-b36b-7983-be12-9f3ccc38b45f | `pending` |
+| 1 | 125c101001944a9aa4291d6fa0700cfe2d9c208f | GPT-6.1-Sol via Codex; CODEX_THREAD_ID=01a1a302-b36b-7983-be12-9f3ccc38b45f | 708ad0a0c58bfe99f1dd9764cd1bece2f4b6b16a..125c101001944a9aa4291d6fa0700cfe2d9c208f | GPT-6.1-Sol via Codex; CODEX_THREAD_ID=01a1a302-b36b-7983-be12-9f3ccc38b45f | `fail` |
+| 2 | 1c8e0e8a6bf9e70f122945a55f569116375b2e0d | GPT-6.1-Sol via Codex; CODEX_THREAD_ID=01a1a758-936e-7a61-9988-736f31049c78 | 125c101001944a9aa4291d6fa0700cfe2d9c208f..1c8e0e8a6bf9e70f122945a55f569116375b2e0d | GPT-6.1-Sol via Codex; CODEX_THREAD_ID=01a1a758-936e-7a61-9988-736f31049c78 | `pending` |
 
 ## Order of round 1
 
