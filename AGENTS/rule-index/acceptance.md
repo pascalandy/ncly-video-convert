@@ -1,0 +1,18 @@
+# Acceptance proof
+
+This part of the [rule index](../rule-index.md) holds the acceptance rules of the build loop.
+
+| Rule | Enforced by |
+|---|---|
+| Before the first review, a test file holds a block that a reader needs, with a value that is not the default and private text | [Kit `reads`][reads] needs private text unless an accepted limit describes retained data and its [privacy declaration][privacy-limits] applies. Each matrix Output case needs [a case][reads-matrix]. Round 1 runs `just check` before review. The reviewer judges the value and the limit's meaning |
+| An independent reader proves the declared privacy behavior and that the content shows correctly. A handler that violates that rule fails | [Kit `reads`][reads] searches private text unless an [accepted privacy limit][privacy-limits] applies, and compares the full reference. A bad variant fails the declared check. For a private-text search, the bad variant holds the private text |
+| The tests and `just acceptance` need no root, no mount, and no system service | Prose only |
+| Each case of the Output group that applies has a test file that the tests make, checked by an independent reader | [Kit Output cases][reads-matrix] for each case that `## Case matrix` names; partial: the reviewer checks that the matrix names each case that applies |
+| The tests make their files; never search the home folder or copy a file of the user | [Kit `reads`][reads] reads only files of the folder of the scenario; partial: no isolation of the system hides the files of the user |
+| Round 1 tests each generic case that applies, and the first review tests families of cases | Prose on purpose: no manifest lists every family of a domain, so only the reviewer finds a missing one |
+| Before the review of round 1, `## Case matrix` gives each family its tests, and each line of Failures and Acceptance a family | [Finish matrix][finish-matrix] checks the references only, not that the matrix is complete or correct |
+
+[reads]: https://github.com/pascalandy/nicely/blob/v0.26.1/sdk/extensiontest/acceptance.go
+[reads-matrix]: https://github.com/pascalandy/nicely/blob/v0.26.1/sdk/extensiontest/acceptance_matrix.go
+[privacy-limits]: https://github.com/pascalandy/nicely/blob/v0.26.1/docs/north-star/contract/acceptance-cases.md#accepted-privacy-limits
+[finish-matrix]: https://github.com/pascalandy/nicely/blob/v0.26.1/sdk/extensionrepo/spec_matrix.go

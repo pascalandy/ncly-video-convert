@@ -13,14 +13,7 @@ This part of the [rule index](../rule-index.md) holds the rules of the rounds of
 | Each settled fact of the intake links the part read, at a fixed revision; a fact without a read is marked `inference` | The [intake record][intake] gives each fact one kind, and only a `sourced` fact a source |
 | Each unknown fact of the intake is an open line with an ID before the spec | The [intake record][intake] and the [ledger][ledger] check the spec ID at the Spec commit |
 | The reviewer of round 1 refuses a fact that only cites a source | Prose on purpose: only a reader can judge that the cited part supports the fact |
-| Before the first review, a test file holds a block that a reader needs, with a value that is not the default and private text | [Kit `reads`][reads] needs the private text, and [a case][reads-matrix] for each Output case of the matrix; partial: round 1 runs `just check` before its review. The reviewer judges the value |
-| An independent reader proves that the private text is gone and the content shows correctly; a handler that keeps the raw block fails | [Kit `reads`][reads] searches the private text, compares the reference, and needs a bad variant that holds the private text |
 | Each experiment uses a new scratch folder; never delete files recursively inside `sh -c` or a loop | Prose only |
-| The tests and `just acceptance` need no root, no mount, and no system service | Prose only |
-| Each case of the Output group that applies has a test file that the tests make, checked by an independent reader | [Kit Output cases][reads-matrix] for each case that `## Case matrix` names; partial: the reviewer checks that the matrix names each case that applies |
-| The tests make their files; never search the home folder or copy a file of the user | [Kit `reads`][reads] reads only files of the folder of the scenario; partial: no isolation of the system hides the files of the user |
-| Round 1 tests each generic case that applies, and the first review tests families of cases | Prose on purpose: no manifest lists every family of a domain, so only the reviewer finds a missing one |
-| Before the review of round 1, `## Case matrix` gives each family its tests, and each line of Failures and Acceptance a family | [Finish matrix][finish-matrix] checks the references only, not that the matrix is complete or correct |
 | Each refusal and each branch that classifies an input has a pair of tests | [Finish matrix][finish-matrix] needs a spec ID in Accepted of each family; the reviewer checks that it passes |
 | The first reviewer checks that the matrix is complete and runs it, before any repair | Prose on purpose: a receipt cannot show that the matrix is complete, or that the reviewer judged it |
 | A repair adds a pair of tests for its whole family, and only then is its finding `fixed` | [Ledger findings][ledger-findings] need a passing and a refused line in its family; partial: the reviewer judges that the family is whole |
@@ -48,20 +41,18 @@ This part of the [rule index](../rule-index.md) holds the rules of the rounds of
 | Accepting a limit starts no round; after a review, only **Limits.** of `spec.md` changes | [Finish gate][finish-verdict] |
 | A change of `spec.md` that narrows a promise to close a `warn` or `block` is a limit that only the user accepts | Prose on purpose: a diff cannot decide that new words narrow a promise, or that the user agreed |
 
-[finish]: https://github.com/pascalandy/nicely/blob/main/sdk/extensionrepo/finish.go
-[reads]: https://github.com/pascalandy/nicely/blob/main/sdk/extensiontest/acceptance.go
-[reads-matrix]: https://github.com/pascalandy/nicely/blob/main/sdk/extensiontest/acceptance_matrix.go
-[ledger]: https://github.com/pascalandy/nicely/blob/main/sdk/extensionrepo/ledger.go
-[ledger-run]: https://github.com/pascalandy/nicely/blob/main/sdk/extensionrepo/ledger_run.go
-[ledger-findings]: https://github.com/pascalandy/nicely/blob/main/sdk/extensionrepo/ledger_findings.go
-[ledger-history]: https://github.com/pascalandy/nicely/blob/main/sdk/extensionrepo/ledger_history.go
-[finish-matrix]: https://github.com/pascalandy/nicely/blob/main/sdk/extensionrepo/spec_matrix.go
-[finish-verdict]: https://github.com/pascalandy/nicely/blob/main/sdk/extensionrepo/readiness_verdict.go
-[readiness]: https://github.com/pascalandy/nicely/blob/main/sdk/extensionrepo/readiness.go
-[intake]: https://github.com/pascalandy/nicely/blob/main/sdk/extensionrepo/intake.go
-[records]: https://github.com/pascalandy/nicely/blob/main/sdk/extensionrepo/records.go
-[records-view]: https://github.com/pascalandy/nicely/blob/main/sdk/extensionrepo/records_view.go
-[signoff]: https://github.com/pascalandy/nicely/blob/main/sdk/extensionrepo/signoff.go
-[signoff-replay]: https://github.com/pascalandy/nicely/blob/main/sdk/extensionrepo/signoff_replay.go
-[release]: https://github.com/pascalandy/nicely/blob/main/sdk/extensionrepo/release.go
-[release-receipt]: https://github.com/pascalandy/nicely/blob/main/sdk/extensionrepo/release_receipt.go
+[finish]: https://github.com/pascalandy/nicely/blob/v0.26.1/sdk/extensionrepo/finish.go
+[ledger]: https://github.com/pascalandy/nicely/blob/v0.26.1/sdk/extensionrepo/ledger.go
+[ledger-run]: https://github.com/pascalandy/nicely/blob/v0.26.1/sdk/extensionrepo/ledger_run.go
+[ledger-findings]: https://github.com/pascalandy/nicely/blob/v0.26.1/sdk/extensionrepo/ledger_findings.go
+[ledger-history]: https://github.com/pascalandy/nicely/blob/v0.26.1/sdk/extensionrepo/ledger_history.go
+[finish-matrix]: https://github.com/pascalandy/nicely/blob/v0.26.1/sdk/extensionrepo/spec_matrix.go
+[finish-verdict]: https://github.com/pascalandy/nicely/blob/v0.26.1/sdk/extensionrepo/readiness_verdict.go
+[readiness]: https://github.com/pascalandy/nicely/blob/v0.26.1/sdk/extensionrepo/readiness.go
+[intake]: https://github.com/pascalandy/nicely/blob/v0.26.1/sdk/extensionrepo/intake.go
+[records]: https://github.com/pascalandy/nicely/blob/v0.26.1/sdk/extensionrepo/records.go
+[records-view]: https://github.com/pascalandy/nicely/blob/v0.26.1/sdk/extensionrepo/records_view.go
+[signoff]: https://github.com/pascalandy/nicely/blob/v0.26.1/sdk/extensionrepo/signoff.go
+[signoff-replay]: https://github.com/pascalandy/nicely/blob/v0.26.1/sdk/extensionrepo/signoff_replay.go
+[release]: https://github.com/pascalandy/nicely/blob/v0.26.1/sdk/extensionrepo/release.go
+[release-receipt]: https://github.com/pascalandy/nicely/blob/v0.26.1/sdk/extensionrepo/release_receipt.go

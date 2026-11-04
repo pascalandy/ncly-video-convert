@@ -1,6 +1,6 @@
 # video-convert QA
 
-This file answers one question: what does the UAT of `ncly video convert` add to the [UAT protocol](https://github.com/pascalandy/nicely/blob/main/docs/qa/protocol.md) of Nicely? [spec.md](spec.md) holds the behavior.
+This file answers one question: what does the UAT of `ncly video convert` add to the [UAT protocol](https://github.com/pascalandy/nicely/blob/v0.26.1/docs/qa/protocol.md) of Nicely? [spec.md](spec.md) holds the behavior.
 
 ## Prerequisites
 

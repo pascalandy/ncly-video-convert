@@ -89,8 +89,8 @@ github.com/nicksnyder/go-i18n/v2 v2.6.1 h1:JDEJraFsQE17Dut9HFDHzCoAWGEQJom5s0TRd
 github.com/nicksnyder/go-i18n/v2 v2.6.1/go.mod h1:Vee0/9RD3Quc/NmwEjzzD7VTZ+Ir7QbXocrkhOzmUKA=
 github.com/pascalandy/lipgloss/v2 v2.0.7-0.20261016054459-6d92d28af73f h1:CgUZ/RXeASbW48o27BmAIlnjb5uw4/9fv80Dc2esko0=
 github.com/pascalandy/lipgloss/v2 v2.0.7-0.20261016054459-6d92d28af73f/go.mod h1:ipDDJNSGa1hlwDtSfW1s2/xR8Vdhbut4PXh2zEKZd0Q=
-github.com/pascalandy/nicely v0.26.0 h1:BC9zqR/S/VABiuvfhmi9gDLsmY/jOkf+zJHixEt2nuE=
-github.com/pascalandy/nicely v0.26.0/go.mod h1:s6CAKlaKrSGofHiYJE/H+s6ugA9+Wbc6aP8YGcehSSg=
+github.com/pascalandy/nicely v0.26.1 h1:BTphnGLIQgkI2UNwyGKOXO1kIvw7Fe+p3QDWUAHTk1M=
+github.com/pascalandy/nicely v0.26.1/go.mod h1:s4z0QoIrOHU5u8a5uP021S7oC4I8GByz5bDbkIYMviU=
 github.com/pelletier/go-toml/v2 v2.4.3 h1:GTRvJQutkOSftxIFD5xw9aepkYNuPWmVJpffdDPYVpY=
 github.com/pelletier/go-toml/v2 v2.4.3/go.mod h1:2gIqNv+qfxSVS7cM2xJQKtLSTLUE9V8t9Stt+h56mCY=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=

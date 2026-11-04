@@ -26,6 +26,10 @@ Read [intake.md](intake.md) before you write code. It gives the facts to get fro
 - Declare each effect, program, and key in `manifest.toml`. When you cannot tell whether an effect occurs, declare it
 - Give `--dry-run` to a command that writes or bills. The dry run shares the preparation and starts no effect
 
+Under `ncly`, cleanup after a resistant worker has a nominal two-second reservation inside the host's 15-second bound.
+Allow for force-stop and exit overhead.
+Read `programs-that-ncly-runs/cancellation.md` in the pinned contract before designing staging cleanup.
+
 ## Error mapping
 
 Read [error-mapping.md](error-mapping.md) before you map the failures of the wrapped program. It says which failures `sdk/wrap` answers, and how the handler maps the rest.
@@ -48,8 +52,12 @@ The tests of the extension use files that the tests make, such as a text file th
 Before the first review, each command that writes an output gets an acceptance case. Its test file has a block that a reader needs (#423):
 
 - The block uses a value that is not the default, such as `encoding: latin-1`, and it holds private text, such as `author: Ana Lima`
-- An independent reader proves both results: the private text is not in the output, and the output still shows the content correctly
-- Its bad variant is the output of a handler that keeps the raw block. `reads` with `-private` requires that this variant fails
+- An independent reader proves that the content shows correctly and matches the declared privacy behavior
+- Without an accepted privacy limit, `reads -private` proves that private text is absent and rejects a bad variant that keeps the raw block
+
+For an accepted limit, follow Accepted privacy limits in the pinned contract's `acceptance-cases.md` before using `reads -limit`.
+Describe the retained data in its Limit cell. The ID or Output bindings alone do not supply that text.
+Keep the complete retained-metadata reference, nondefault display value, and a bad variant that fails.
 
 The tests and `just acceptance` need no root, no mount, and no system service.
 Each experiment uses a new scratch folder, such as one that `mktemp -d` makes.

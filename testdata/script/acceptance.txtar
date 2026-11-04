@@ -1,3 +1,8 @@
+# An accepted privacy limit uses -case '<case>' -limit <id>. Name its ID in
+# Accepted for every matrix row of that case, and declare the same Output:
+# binding in its Limit cell. Keep -private for text that
+# must stay absent, and keep the independent reader and failing bad variant.
+# Check the retained metadata and a nondefault display declaration there.
 # Made media has a nondefault display rotation and descriptive metadata.
 # Controlled author tags demonstrate possible retention through ffprobe reads.
 exec ffmpeg -nostdin -v error -f lavfi -i testsrc2=size=160x96:rate=30 -f lavfi -i sine=frequency=440:sample_rate=48000 -t 4 -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest flat.mp4

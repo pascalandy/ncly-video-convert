@@ -89,6 +89,12 @@ The domain refuses these inputs:
 
 Each family names the criteria that its accepted and refused inputs prove. `acceptance.sh` independently checks real-input orientation, duration, audio, H.265, repeatability, possible metadata retention, pending publication and `publication-cases`. The made-media scenario also reads the primary output and its publication cases.
 
+An accepted privacy limit names its ID in Accepted for every applicable Output case.
+The Limit cell declares the same `Output: <case>` bindings, separated from its description by semicolons.
+Bindings can come before or after the description. Its own ID or bindings alone do not describe retained data.
+A semicolon-separated part that equals `None` or starts with `Fill:` prevents acceptance. These comparisons ignore case.
+Its acceptance case uses `reads -case '<case>' -limit <id>` and independently checks the retained metadata and nondefault display declaration.
+
 | Family | Source | Accepted | Refused |
 |---|---|---|---|
 | Readable local regular input | Input: Unreadable | `duration` | `bad-input` |
