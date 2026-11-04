@@ -32,8 +32,8 @@ expect_refusal() {
 		if [[ "$mode" == preview ]]; then flags+=(--dry-run); fi
 		status=0
 		(cd "$work" && ncly "${command[@]}" "$source" "$@" "${flags[@]}") >"$scratch/refused.out" 2>"$scratch/refused.err" || status=$?
-		[[ "$status" == 2 ]] || die "$mode expected $code, got exit $status: $(cat "$scratch/refused.err")"
-		grep -qF "\"code\":\"$code\"" "$scratch/refused.err" || die "$mode omitted $code"
+		[[ "$status" == 2 ]] || die "$mode of $source expected $code, got exit $status: $(cat "$scratch/refused.err")"
+		grep -qF "\"code\":\"$code\"" "$scratch/refused.err" || die "$mode of $source omitted $code"
 	done
 }
 
@@ -79,7 +79,7 @@ fi
 grep -qF '"pending_checks":["video_decode","publication.link"]' "$scratch/plan" || die 'the dry run omitted publication.link from pending_checks'
 grep -qF '"overwrite":false' "$scratch/plan" || die 'the create dry run changed overwrite consent'
 planned="$(sed -n 's/.*"output":"\([^"]*\)".*/\1/p' "$scratch/plan")"
-[[ -n "$planned" && ! -e "$planned" ]] || die 'the create dry run published an output'
+[[ -n "$planned" && ! -e "$planned" && ! -L "$planned" ]] || die 'the create dry run published an output'
 no_stage
 # spec: publication-cases
 input_before="$(sum "$input")"
@@ -115,18 +115,19 @@ tag() {
 	ffprobe -v error -show_entries "format_tags=$1" -of default=noprint_wrappers=1:nokey=1 "$2"
 }
 metadata_retained_count() {
-	local source=$1 target=$2 source_key output_key value pair candidates=0 retained=0
+	local source=$1 target=$2 codec=$3 source_key output_key value output_value pair candidates=0 retained=0
 	for pair in artist:artist date:date com.apple.quicktime.make:make com.apple.quicktime.creationdate:date; do
 		source_key="${pair%%:*}" output_key="${pair#*:}"
-		value="$(tag "$source_key" "$source")"
+		value="$(tag "$source_key" "$source")" || die "metadata reader: ffprobe failed for $source ($source_key)"
 		if [[ -n "$value" ]]; then
 			candidates=$((candidates + 1))
-			if [[ "$(tag "$output_key" "$target")" == "$value" ]]; then
+			output_value="$(tag "$output_key" "$target")" || die "metadata reader: ffprobe failed for $target ($output_key)"
+			if [[ "$output_value" == "$value" ]]; then
 				retained=$((retained + 1))
 			fi
 		fi
 	done
-	printf 'metadata: %s of %s known input values retained in %s\n' "$retained" "$candidates" "${target##*/}" >&2
+	printf 'metadata (%s): %s of %s known input values retained in %s\n' "$codec" "$retained" "$candidates" "${target##*/}" >&2
 	printf '%s\n' "$retained"
 }
 metadata_control() {
@@ -196,7 +197,7 @@ above "$orientation" 0.8 || die "$output does not show the input the same way up
 # spec: loudness
 audio="$(heard "$output")"
 # spec: metadata-retained
-retained264="$(metadata_retained_count "$input" "$output")"
+retained264="$(metadata_retained_count "$input" "$output" h264)"
 
 # spec: publication-cases
 # A distinct short output makes a forbidden overwrite visible to the readers.
@@ -260,9 +261,9 @@ h265_duration="$(duration "$output")"
 awk -v a="$in_duration" -v b="$h265_duration" 'BEGIN { d = a - b; exit !(d <= 0.1 && d >= -0.1) }' ||
 	die "the duration of the h265 output, $h265_duration s, is not within 0.1 s of $in_duration s"
 audio265="$(heard "$output")"
-retained265="$(metadata_retained_count "$input" "$output")"
-# A zero observation is allowed. Demonstrate the possibility once, rather than
-# re-reading the same control after each codec.
+retained265="$(metadata_retained_count "$input" "$output" h265)"
+# A zero observation is allowed. One tagged control demonstrates the possibility
+# when neither output retains a known value.
 if ((retained264 + retained265 == 0)); then metadata_control; fi
 
 # The domain refuses a still image, which HandBrakeCLI accepts: HandBrake
@@ -271,7 +272,7 @@ if ((retained264 + retained265 == 0)); then metadata_control; fi
 for still in still.png still.jpg; do
 	ffmpeg -nostdin -v error -f lavfi -i testsrc2=size=320x240 -frames:v 1 "$work/$still"
 	expect_refusal VIDEO_CONVERT_UNREADABLE "$work/$still"
-	[[ ! -e "$work/still.converted.mp4" ]] || die "$work/$still gave the output $work/still.converted.mp4"
+	[[ ! -e "$work/still.converted.mp4" && ! -L "$work/still.converted.mp4" ]] || die "$work/$still gave the output $work/still.converted.mp4"
 	no_stage
 done
 

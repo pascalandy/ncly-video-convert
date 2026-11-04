@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# PATH control for generated acceptance: fail only the source artist read.
+# Every other query uses the real ffprobe named by the test harness.
+set -euo pipefail
+
+fail_metadata=false
+probe_file=
+for probe_arg in "$@"; do
+	if [[ "$probe_arg" == format_tags=artist ]]; then fail_metadata=true; fi
+	probe_file=$probe_arg
+done
+if [[ "$fail_metadata" == true && "$probe_file" == */clip.mov ]]; then
+	echo 'negative control: ffprobe metadata source read failed (exit 73)' >&2
+	exit 73
+fi
+exec "${READER_CONTROL_REAL_FFPROBE:?Set the real ffprobe path}" "$@"
