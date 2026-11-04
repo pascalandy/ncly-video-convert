@@ -5,7 +5,7 @@ This file answers one question: what does the UAT of `ncly video convert` add to
 ## Prerequisites
 
 - `just acceptance` passes on the fixture that [spec.md](spec.md#acceptance) names in `## Acceptance`, in a clone at the tested tag. It checks the Result, Fidelity and Determinism below, pending publication, possible metadata retention, `publication-cases`, and the refusal of a still image, the `still-image` line of [spec.md](spec.md#acceptance)
-- HandBrakeCLI, at the version that [vision.md](vision.md) names as tested
+- A HandBrakeCLI build on which `just acceptance` passes. [vision.md](vision.md) lists the builds tested so far. Record `HandBrakeCLI --version` with the UAT result
 - `ffprobe` and `ffmpeg`, for the independent check. The command runs `ffmpeg` too, to normalize the audio
 - On Linux with an Intel GPU, Intel's media runtime, such as `vpl-gpu-rt` on Arch Linux, so that Quick Sync encodes
 - The fixture that [spec.md](spec.md#acceptance) names in `## Acceptance`. On a host without it, copy it with the [verified copy procedure](https://github.com/pascalandy/nicely/blob/main/docs/qa/fixtures.md#copy-a-fixture-to-a-host) of the fixture registry, and check it against its `SHA256SUMS`

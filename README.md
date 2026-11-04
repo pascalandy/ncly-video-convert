@@ -31,7 +31,7 @@ ncly video convert clip.mov --force --dry-run
 ncly video convert clip.mov --force
 ```
 
-A failed conversion keeps the previous output. The command removes staging after ordinary errors, SIGINT and SIGTERM. If HandBrake ignores a stop signal, a `.ncly-video-convert-*` folder can remain beside the output. [Nicely#468](https://github.com/pascalandy/nicely/issues/468) tracks that open defect.
+A failed conversion keeps the previous output. The command removes staging after errors, timeouts, SIGINT and SIGTERM. If HandBrake ignores a stop signal, a `.ncly-video-convert-*` folder can remain beside the output. [Nicely#468](https://github.com/pascalandy/nicely/issues/468) tracks that open defect.
 
 A dry run checks paths, folder access, HandBrake availability, and the input's video title without encoding. It cannot prove that the whole video decodes or that the folder supports publication. Without `--force`, a new output needs a hard link. With `--force`, publication uses a rename whether or not the output already exists. The JSON answer lists these pending operations as `video_decode` and either `publication.link` or `publication.rename` in `pending_checks`.
 

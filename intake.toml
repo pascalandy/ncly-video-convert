@@ -83,7 +83,7 @@ result = "Latest published Nicely was v0.26.0 before just update; the verified l
 
 [[facts]]
 kind = "sourced"
-statement = "HandBrake's --no-metadata option starts at 1.10.0. Older CLI versions can exit zero without output on an unknown option. The default conversion must preserve metadata behavior without that option."
+statement = "HandBrake's --no-metadata option starts at 1.10.0. Older CLI versions can exit zero without output on an unknown option. The default conversion must not pass that option."
 source = "https://github.com/HandBrake/HandBrake/blob/1.7.2/test/test.c and https://github.com/HandBrake/HandBrake/blob/1.10.0/test/test.c"
 revision = "1.7.2 and 1.10.0"
 read = "main option-parse cleanup and ParseOptions: no no-metadata entry in 1.7.2, new entry in 1.10.0"
@@ -105,7 +105,7 @@ result = "In private Ubuntu 24.04 with HandBrake 1.7.2, the old universal-retent
 
 [[facts]]
 kind = "sourced"
-statement = "HandBrake 1.7.2 and 1.9.2 lack Apple QuickTime aliases in metadata_keys. Version 1.10.0 adds aliases for creation date, maker and location. This source difference explains why Apple-tagged inputs can differ across tool builds; it is not a preservation promise."
+statement = "HandBrake 1.7.2 and 1.9.2 lack Apple QuickTime aliases in metadata_keys. Version 1.10.0 adds Apple QuickTime aliases, including com.apple.quicktime.creationdate to date, com.apple.quicktime.make to make, and com.apple.quicktime.location.ISO6709 to location. This source difference explains why Apple-tagged inputs can differ across tool builds; it is not a preservation promise."
 source = "https://github.com/HandBrake/HandBrake/blob/1.7.2/libhb/muxavformat.c and https://github.com/HandBrake/HandBrake/blob/1.9.2/libhb/muxavformat.c and https://github.com/HandBrake/HandBrake/blob/1.10.0/libhb/muxavformat.c"
 revision = "1.7.2, 1.9.2 and 1.10.0"
 read = "metadata_keys and hb_lookup_meta_key; the exact source revision of om1's snapshot was not inspected"
