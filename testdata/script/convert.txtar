@@ -48,6 +48,7 @@ stderr '"code":"RUNTIME"'
 env STUB=
 
 # A successful process must create a nonempty output. Both transport paths work.
+# spec: cleanup-limits
 ncly video convert 'clips/one clip.mov'
 stdout '"size_bytes":8'
 stdout '"codec":"h264"'
@@ -55,6 +56,7 @@ stdout '"encoder":"x264"'
 stdout '"normalized":false'
 cmp 'clips/one clip.converted.mp4' expected.mp4
 cmp 'clips/one clip.mov' original.mov
+exec sh -c 'for p in .ncly-video-convert-* clips/.ncly-video-convert-*; do test ! -e "$p" && test ! -L "$p" || exit 1; done'
 # spec: output-exists
 protect 'clips/one clip.mov' 'clips/one clip.converted.mp4'
 refuses CONFIRMATION_REQUIRED ncly video convert 'clips/one clip.mov'
@@ -104,7 +106,7 @@ stderr '"code":"RUNTIME"'
 ! exists empty.converted.mp4
 
 # Timeout cleans partial data and never publishes it.
-# spec: encode-failed
+# spec: encode-failed cleanup-limits
 env STUB=hang
 exits 1 ncly video convert timeout.mov --timeout 100ms
 stderr '"code":"RUNTIME"'

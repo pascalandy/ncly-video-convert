@@ -109,3 +109,14 @@ statement = "HandBrake 1.7.2 and 1.9.2 lack Apple QuickTime aliases in metadata_
 source = "https://github.com/HandBrake/HandBrake/blob/1.7.2/libhb/muxavformat.c and https://github.com/HandBrake/HandBrake/blob/1.9.2/libhb/muxavformat.c and https://github.com/HandBrake/HandBrake/blob/1.10.0/libhb/muxavformat.c"
 revision = "1.7.2, 1.9.2 and 1.10.0"
 read = "metadata_keys and hb_lookup_meta_key; the exact source revision of om1's snapshot was not inspected"
+
+[[facts]]
+kind = "sourced"
+statement = "Nicely v0.26.1 core reserves two seconds of its existing 15-second cleanup deadline for the extension after force-stopping descendants. The extension SDK alone cannot add this reservation to an older core."
+source = "https://github.com/pascalandy/nicely/blob/v0.26.1/internal/cli/dispatch.go and https://github.com/pascalandy/nicely/blob/v0.26.1/sdk/runner/cleanup.go"
+revision = "v0.26.1, 531b3b48b79cff55d7b040092658e6801e68b750"
+read = "call.run CleanupReserve and waitCleanup; the extension's direct worker uses the default reserve"
+
+[[experiments]]
+command = "host-floor/probe.py: same v0.26.1 extension, 20,000-file resistant worker, TERM sent only to each host"
+result = "Cores built from release sources v0.23.0 and v0.26.0 both left one stage after about 15.03 seconds. The published v0.26.1 binary removed it in 13.22 seconds. All three preserved input and previous output and answered TERMINATED. The supported host floor is therefore v0.26.1; no HandBrake floor changes."

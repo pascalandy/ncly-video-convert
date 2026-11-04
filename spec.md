@@ -23,6 +23,7 @@ The input is opened only for reading. Its folder is resolved through the file sy
 | ID | State | Limit | Accepted |
 |---|---|---|---|
 | `private-metadata` | limit | Output: Keeps private data of the input; Output: Keeps data that a reader needs; The command does not request descriptive metadata removal. Author, capture date, device metadata or location can remain, depending on the input, tool versions and normalization. Do not rely on either retention or removal. Opt-in stripping is tracked in [#18](https://github.com/pascalandy/ncly-video-convert/issues/18) | Head Chef decision relayed by Chef 2 on 2026-11-03 in brigade a1d9, recorded in [PR #17](https://github.com/pascalandy/ncly-video-convert/pull/17) |
+| `core-minimum` | limit | Requires Nicely ≥ v0.26.1 for the cleanup guarantee. The manifest has only `contract_version` and cannot enforce this minimum. Older cores can leave one stage after TERM; the input and previous output stay safe. [nicely#484](https://github.com/pascalandy/nicely/issues/484) tracks enforcement | Head Chef decision under D068, relayed by Chef 2 on 2026-11-04 and recorded in [PR #17](https://github.com/pascalandy/ncly-video-convert/pull/17) |
 
 ## Effects
 
@@ -60,9 +61,11 @@ A warning never changes the exit code.
 
 ## Runtime constraints
 
+The Nicely host must be v0.26.1 or later. Its cleanup reserve lets the extension remove staging after a resistant worker stops. Updating the extension alone does not add that reserve to an older host.
+
 HandBrake 1.7.2 through 1.9.x write conversion time as `creation_time`. From 1.10, HandBrake copies a source timestamp when one exists. This version-dependent container metadata does not define media determinism. No new HandBrake minimum is required.
 
-HandBrake must support the built-in preset. Availability is checked without parsing its version because distribution builds can print a source revision instead of a release number. The destination filesystem must support hard links for publication without overwrite consent. Dry run decodes only what the scan reads, and reserves no destination. HandBrake also exits 2 for an unknown preset, so the scan carries no preset, and an encode that exits 2 stays `RUNTIME`. A broken HandBrake install that cannot load its built-in presets exits 2 on the scan too, so it reports `VIDEO_CONVERT_UNREADABLE` for any input; the command does not parse HandBrake's text to tell the two apart. Cleanup handles ordinary errors, timeouts, SIGINT (Ctrl-C), and SIGTERM; SIGKILL, power loss, and filesystem refusal can prevent any process from cleaning temporary files. The `cleanup-limits` Open line records the public resistant-worker cleanup defect and its closure criteria. Nicely's core and SDK own [#468](https://github.com/pascalandy/nicely/issues/468). No cleanup loss is accepted. An external SIGKILL during cleanup can still interrupt that cleanup. Such temporary data is never published as the output. HandBrake inherits ordinary environment variables under the SDK's environment rules. The command discards HandBrake's stdout during the encode, where HandBrake prints encode progress, so the SDK's capture limit does not apply to it. A GPU encoder does not give the same file from run to run. Quick Sync decodes nothing, since its decoding stopped HandBrake with exit 3 on the fixture. On om1, `x265_10bit` was about 2.7 times slower than `x264` on the CPU, so `--codec h265` is slow on a machine without a GPU encoder. When a linear gain would pass the true peak, `loudnorm` compresses the loudness range instead.
+HandBrake must support the built-in preset. Availability is checked without parsing its version because distribution builds can print a source revision instead of a release number. The destination filesystem must support hard links for publication without overwrite consent. Dry run decodes only what the scan reads, and reserves no destination. HandBrake also exits 2 for an unknown preset, so the scan carries no preset, and an encode that exits 2 stays `RUNTIME`. A broken HandBrake install that cannot load its built-in presets exits 2 on the scan too, so it reports `VIDEO_CONVERT_UNREADABLE` for any input; the command does not parse HandBrake's text to tell the two apart. Cleanup handles ordinary errors, timeouts, SIGINT (Ctrl-C), and SIGTERM; SIGKILL, power loss, and filesystem refusal can prevent any process from cleaning temporary files. Nicely v0.26.1 fixes the public resistant-worker cleanup defect of [#468](https://github.com/pascalandy/nicely/issues/468). The accepted `core-minimum` limit records the host prerequisite that the manifest cannot enforce. An external SIGKILL during cleanup can still interrupt that cleanup. Such temporary data is never published as the output. HandBrake inherits ordinary environment variables under the SDK's environment rules. The command discards HandBrake's stdout during the encode, where HandBrake prints encode progress, so the SDK's capture limit does not apply to it. A GPU encoder does not give the same file from run to run. Quick Sync decodes nothing, since its decoding stopped HandBrake with exit 3 on the fixture. On om1, `x265_10bit` was about 2.7 times slower than `x264` on the CPU, so `--codec h265` is slow on a machine without a GPU encoder. When a linear gain would pass the true peak, `loudnorm` compresses the loudness range instead.
 
 ## Acceptance
 
@@ -77,6 +80,7 @@ The real input is the fixture `IMG_1642.MOV` of the [fixture registry](https://g
 - `determinism`: Within one normalization mode, repeated conversions keep frame count, duration and audio stream hashes; video SSIM is at least 0.999 for CPU encoders and 0.99 for GPU encoders, independently of container timestamps
 - `publication-pending`: A dry run lists `publication.link` without force and `publication.rename` with force in `pending_checks`
 - `metadata-retained`: Descriptive metadata can remain in an output. Controlled tagged media proves this possibility; real-input acceptance reports retained known values without requiring any from that input
+- `cleanup-limits`: Ordinary success, failure and handled signals leave no staging when the filesystem cooperates, including a worker that ignores SIGTERM
 
 The domain refuses these inputs:
 
@@ -108,7 +112,7 @@ Its acceptance case uses `reads -case '<case>' -limit <id>` and independently ch
 | Complete private staging | Output: Temporary file | `duration`, `publication-cases` | `encode-failed`, `publish-failed` |
 | Publication capability is pending | Other: Dry run | `publication-pending` | `publish-failed` |
 | Work has one deadline | Input: Very large; Input: Large expansion; Interruption: Timeout | `duration` | `bad-timeout`, `scan-failed`, `encode-failed` |
-| Stop and cleanup | Interruption: SIGINT or SIGTERM during the work | `duration` | `interrupted`, `terminated` |
+| Stop and cleanup | Interruption: SIGINT or SIGTERM during the work | `duration`, `cleanup-limits` | `interrupted`, `terminated` |
 | Paths stay one argument | File name: Spaces; File name: Leading dash; File name: Shell characters | `duration` | `bad-input` |
 | Display orientation | Output: Loses data that changes the meaning | `orientation` | `still-image` |
 | Display declarations | Output: Keeps data that a reader needs | `orientation`, `metadata-retained`, `private-metadata` | None |
@@ -127,6 +131,4 @@ Every obligation is exercised by `predicts`, `appears`, and Linux `without` chec
 
 ## Open lines
 
-| ID | Command | Part | Case | Code |
-|---|---|---|---|---|
-| `cleanup-limits` | `ncly video convert` | Acceptance | Ordinary success, failure and handled signals leave no staging when the filesystem cooperates, including a resistant worker. On SDK v0.26.0 the one-file public case failed 4/10 runs. At `4b2de72`, the committed 20,000-file case failed 10/10 runs at exit 91. Heavy-stage review controls add 2/2 public failures and 6/6 direct passes. [Nicely#468](https://github.com/pascalandy/nicely/issues/468) must ship with a regression that rejects the unfixed SDK. At the final frozen candidate SHA after the update, om1 and the Mini must each pass 10 public signals runs with preserved input and previous output, no stage and no surviving worker. Hosted macOS checks must pass on that SHA, and signoff must sign that SHA. Keep the file count and thresholds fixed. To close the line, move the proven criterion to Acceptance, rewrite the pending cleanup text in README, qa, Runtime constraints and the signals comment, and add the actual Nicely version and verified cleanup fix to CHANGELOG v0.2.2. One passing schedule cannot close this line | None |
+None. The applicable generic cases are declared in the matrix and proved by the scenarios. Final candidate host receipts and signoff remain release gates recorded in PR #17.

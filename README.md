@@ -31,13 +31,13 @@ ncly video convert clip.mov --force --dry-run
 ncly video convert clip.mov --force
 ```
 
-A failed conversion keeps the previous output. The command removes staging after errors, timeouts, SIGINT and SIGTERM. If HandBrake ignores a stop signal, a `.ncly-video-convert-*` folder can remain beside the output. [Nicely#468](https://github.com/pascalandy/nicely/issues/468) tracks that open defect.
+A failed conversion keeps the previous output. With Nicely v0.26.1 or later, the command removes staging after errors, timeouts, SIGINT and SIGTERM, including a HandBrake worker that ignores the stop signal. This fixes [nicely#468](https://github.com/pascalandy/nicely/issues/468).
 
 A dry run checks paths, folder access, HandBrake availability, and the input's video title without encoding. It cannot prove that the whole video decodes or that the folder supports publication. Without `--force`, a new output needs a hard link. With `--force`, publication uses a rename whether or not the output already exists. The JSON answer lists these pending operations as `video_decode` and either `publication.link` or `publication.rename` in `pending_checks`.
 
 ## Install
 
-Install [Nicely](https://github.com/pascalandy/nicely#install) v0.23.0 or later, so that `ncly` is on your PATH. An older `ncly` skips this named extension.
+Install [Nicely](https://github.com/pascalandy/nicely#install) v0.26.1 or later, so that `ncly` is on your PATH. Upgrade the host with the extension: the host supplies the cleanup fix for a worker that ignores a stop signal. The manifest cannot enforce this minimum yet ([nicely#484](https://github.com/pascalandy/nicely/issues/484)). Older cores can leave a staging folder after SIGTERM; the input and previous output stay safe.
 
 Also install Go, just, HandBrakeCLI, and ffmpeg, such as `brew install handbrake ffmpeg` on macOS or `sudo pacman -S handbrake-cli ffmpeg` on Arch Linux. On Linux with an Intel GPU, Quick Sync also needs Intel's media runtime, such as `sudo pacman -S vpl-gpu-rt` on Arch Linux. Without it, the command encodes on the CPU and warns. Replace TAG with the highest release tag, then build the extension:
 

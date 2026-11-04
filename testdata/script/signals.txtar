@@ -2,7 +2,7 @@
 # survives snapshots at the marker, so cmp also compares with the untouched fixtures.
 chmod 755 bin/HandBrakeCLI
 
-# spec: interrupted
+# spec: interrupted cleanup-limits
 env QA_PHASE=scan
 env QA_MARKER=started-INT-scan
 survives clip.mov clip.converted.mp4
@@ -12,7 +12,7 @@ cmp clip.mov clip.mov.before
 cmp clip.converted.mp4 previous.mp4
 exec sh bin/assert-invariants
 
-# spec: terminated
+# spec: terminated cleanup-limits
 env QA_MARKER=started-TERM-scan
 survives clip.mov clip.converted.mp4
 signal TERM $QA_MARKER ncly video convert clip.mov --force --dry-run
@@ -21,7 +21,7 @@ cmp clip.mov clip.mov.before
 cmp clip.converted.mp4 previous.mp4
 exec sh bin/assert-invariants
 
-# spec: interrupted
+# spec: interrupted cleanup-limits
 env QA_PHASE=encode
 env QA_MARKER=started-INT-encode
 survives new.mov
@@ -31,7 +31,7 @@ cmp new.mov new.mov.before
 ! exists new.converted.mp4
 exec sh bin/assert-invariants
 
-# spec: terminated
+# spec: terminated cleanup-limits
 env QA_MARKER=started-TERM-encode
 survives clip.mov clip.converted.mp4
 signal TERM $QA_MARKER ncly video convert clip.mov --force
@@ -40,10 +40,10 @@ cmp clip.mov clip.mov.before
 cmp clip.converted.mp4 previous.mp4
 exec sh bin/assert-invariants
 
-# A worker that ignores TERM exposes the public staging leak of nicely#468.
-# Keep the stage-absence assertion active; no waiver or retry-until-green.
-# The cleanup-limits Open line gives baseline evidence and the closure rule.
-# spec: terminated
+# Nicely v0.26.1 keeps cleanup time after force-stopping a resistant worker.
+# The same 20k-file case rejects the unfixed SDK; keep its assertions unchanged.
+# Final candidate receipts require ten clean public runs on each approved host.
+# spec: terminated cleanup-limits
 env QA_PHASE=resistant
 env QA_MARKER=started-TERM-resistant
 survives clip.mov clip.converted.mp4
