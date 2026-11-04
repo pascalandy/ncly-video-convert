@@ -17,7 +17,11 @@ exec ffmpeg -nostdin -v error -display_rotation 180 -i clip.converted.mp4 -c cop
 exec ffmpeg -nostdin -v error -i clip.converted.mp4 -vf hflip,vflip -c:v libx264 -an upside-down.mp4
 reads -case 'Loses data that changes the meaning' clip.converted.mp4 upright-reference upside-down.mp4 sh upright.sh
 reads clip.converted.mp4 upright-reference residual-rotation.mp4 sh upright.sh
-reads clip.converted.mp4 author-reference flat.mp4 ffprobe -v error -show_entries format_tags=artist -of default=noprint_wrappers=1:nokey=1
+# Each accepted privacy case checks retained metadata and displayed content.
+# The raw-input variant has a residual matrix; the second variant lacks artist.
+exec ffmpeg -nostdin -v error -i clip.converted.mp4 -c copy -metadata artist= bad-metadata.mp4
+reads -case 'Keeps data that a reader needs' -limit private-metadata clip.converted.mp4 metadata-reference bad.mp4 sh metadata.sh
+reads -case 'Keeps private data of the input' -limit private-metadata clip.converted.mp4 metadata-reference bad-metadata.mp4 sh metadata.sh
 cp clip.converted.mp4 preserved.mp4
 
 # The old output is deliberately different from a fresh conversion.
@@ -88,6 +92,14 @@ nb_read_frames=120
 rotation=90
 -- author-reference --
 Ana Lima
+-- metadata-reference --
+upright
+Ana Lima
+-- metadata.sh --
+#!/bin/sh
+set -eu
+sh upright.sh "$1"
+ffprobe -v error -show_entries format_tags=artist -of default=noprint_wrappers=1:nokey=1 "$1"
 -- hevc-reference --
 codec_name=hevc
 profile=Main 10

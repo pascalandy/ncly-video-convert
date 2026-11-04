@@ -22,8 +22,7 @@ The input is opened only for reading. Its folder is resolved through the file sy
 
 | ID | State | Limit | Accepted |
 |---|---|---|---|
-| `private-metadata` | limit | The command does not request descriptive metadata removal. Author, capture date, device metadata or location can remain, depending on the input, tool versions and normalization. Do not rely on either retention or removal. This is the accepted privacy loss for `Output: Keeps private data of the input` and `Output: Keeps data that a reader needs`. Opt-in stripping is tracked in [#18](https://github.com/pascalandy/ncly-video-convert/issues/18) | Head Chef decision relayed by Chef 2 on 2026-11-03 in brigade a1d9, recorded in [PR #17](https://github.com/pascalandy/ncly-video-convert/pull/17) |
-| `kit-accepted-limits` | limit | SDK v0.26.0 still demands privacy-removal reads for an accepted retention limit. [nicely#462](https://github.com/pascalandy/nicely/issues/462) must ship in Nicely before this build can pass check and signoff. Coverage remains failed; no waiver is taken | Head Chef D068 decision relayed by Chef 2 on 2026-11-03, recorded in [PR #17](https://github.com/pascalandy/ncly-video-convert/pull/17) |
+| `private-metadata` | limit | Output: Keeps private data of the input; Output: Keeps data that a reader needs; The command does not request descriptive metadata removal. Author, capture date, device metadata or location can remain, depending on the input, tool versions and normalization. Do not rely on either retention or removal. Opt-in stripping is tracked in [#18](https://github.com/pascalandy/ncly-video-convert/issues/18) | Head Chef decision relayed by Chef 2 on 2026-11-03 in brigade a1d9, recorded in [PR #17](https://github.com/pascalandy/ncly-video-convert/pull/17) |
 
 ## Effects
 
@@ -112,7 +111,7 @@ Its acceptance case uses `reads -case '<case>' -limit <id>` and independently ch
 | Stop and cleanup | Interruption: SIGINT or SIGTERM during the work | `duration` | `interrupted`, `terminated` |
 | Paths stay one argument | File name: Spaces; File name: Leading dash; File name: Shell characters | `duration` | `bad-input` |
 | Display orientation | Output: Loses data that changes the meaning | `orientation` | `still-image` |
-| Display declarations | Output: Keeps data that a reader needs | `orientation`, `metadata-retained` | None |
+| Display declarations | Output: Keeps data that a reader needs | `orientation`, `metadata-retained`, `private-metadata` | None |
 | Descriptive metadata can remain | Output: Keeps private data of the input | `metadata-retained`, `private-metadata` | None |
 
 Regular-file input excludes DVD directories and executable scripts. The bounded job is the first video title and the preset's selected audio, with the codec and display declarations above; arbitrary arguments and active content are never relayed. Worker output and expensive decode share the declared timeout. The Runtime constraints above still apply.
