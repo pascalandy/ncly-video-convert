@@ -1,6 +1,6 @@
 # Coverage record
 
-Correspondence was confirmed against ncly-video-convert `7c17b027e8287503368c49f5c8e2730941095ede` and Nicely SDK `v0.26.0`
+Correspondence was checked against ncly-video-convert `7c17b027e8287503368c49f5c8e2730941095ede` and Nicely SDK `v0.26.1`
 Advance these references only after reviewing the mapped operations
 `verification/publication/record.json` binds the exact source bytes and tool pins from the completed run
 `internal/publication/record.go` defines the complete input inventory
@@ -33,6 +33,11 @@ It excludes normalization and GPU fallback internals, independent media decoding
 It also excludes macOS execution, host signal forwarding, power-loss durability, and fsync guarantees
 SIGKILL, exceeded cleanup budgets, and filesystem refusal can leave staging
 Post-publication errors can accompany an output that already exists
+
+The snapshot also binds the non-test runner files, process-tree helpers and core dispatch
+Nicely v0.26.1 core requests a two-second `CleanupReserve` inside its existing 15-second deadline
+It force-stops descendants before that tail, leaving the extension time for deferred cleanup
+The public 20,000-file case in `signals.txtar` checks that host boundary separately from this bounded model
 
 `verification/tlc.json` declares the model configurations and tool pins used by `sdk/verification`
 `verification/tlc-record.json` holds the model outcomes

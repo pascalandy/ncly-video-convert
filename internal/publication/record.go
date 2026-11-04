@@ -67,11 +67,29 @@ func Inputs(root string) (map[string]string, string, error) {
 		}
 	}
 	for _, name := range []string{
-		"go.mod", "sdk/extension/handle.go", "sdk/runner/signal.go", "sdk/contract/answer.go", "sdk/command/answer.go",
+		"go.mod", "sdk/extension/handle.go", "sdk/contract/answer.go", "sdk/command/answer.go", "internal/cli/dispatch.go",
 		"sdk/verification/verification.go", "sdk/verification/tlc.go", "sdk/verification/record.go", "sdk/extensionrepo/owned_run.go",
 	} {
 		if err := hashFile(inputs, "nicely/"+name, filepath.Join(sdk.Dir, name)); err != nil {
 			return nil, "", err
+		}
+	}
+	for _, pattern := range []string{"sdk/runner/*.go", "sdk/platform/proctree*.go"} {
+		paths, err := filepath.Glob(filepath.Join(sdk.Dir, pattern))
+		if err != nil || len(paths) == 0 {
+			return nil, "", fmt.Errorf("missing SDK proof inputs for %s: %v", pattern, err)
+		}
+		for _, path := range paths {
+			if strings.HasSuffix(path, "_test.go") {
+				continue
+			}
+			name, err := filepath.Rel(sdk.Dir, path)
+			if err != nil {
+				return nil, "", err
+			}
+			if err := hashFile(inputs, "nicely/"+filepath.ToSlash(name), path); err != nil {
+				return nil, "", err
+			}
 		}
 	}
 	return inputs, version, nil

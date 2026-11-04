@@ -25,7 +25,7 @@ Init ==
   /\ unauthorized = FALSE
   /\ cleanupRefused = [i \in Jobs |-> FALSE]
 
-(* V = ncly-video-convert at 7c17b027; N = Nicely SDK at v0.26.0.
+(* V = ncly-video-convert at 7c17b027; N = Nicely SDK at v0.26.1.
    Model program counters and ghost observations are not extra code effects.
    Syscalls are separate steps. No action combines a context check and commit.
    Jobs share the destination and preserved input, with private staging dirs.
